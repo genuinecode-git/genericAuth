@@ -49,22 +49,71 @@ This project follows Clean Architecture principles with clear separation of conc
 # Build the solution
 dotnet build
 
-# Run migrations (after infrastructure setup is complete)
-dotnet ef database update --project src/GenericAuth.Infrastructure --startup-project src/GenericAuth.API
-
-# Run the API
-dotnet run --project src/GenericAuth.API
+# Run the API (migrations and seeding happen automatically on startup)
+cd src/GenericAuth.API
+dotnet run
 ```
+
+### Default Credentials
+
+The system automatically seeds a default **Auth Admin** user on first run:
+
+| Field | Value |
+|-------|-------|
+| **Email** | `admin@genericauth.com` |
+| **Password** | `Admin@123` |
+| **User Type** | `AuthAdmin` (System Administrator) |
+
+⚠️ **SECURITY WARNING**: Change the default password immediately in production environments!
+
+### Testing the API
+
+1. Navigate to Swagger UI at: `https://localhost:{port}` (port will be shown in console)
+2. Use the default Auth Admin credentials to login
+3. Follow the [Testing Guide](./TESTING_GUIDE.md) for complete end-to-end testing workflows
+
+## Git Workflow & Branching Strategy
+
+This project follows a **Git Flow** workflow with protected branches:
+
+### Branches
+- **`main`** - Production-ready code (protected, requires PR)
+- **`development`** - Active development (default branch)
+- **`feature/*`** - New features (merge to development)
+- **`bugfix/*`** - Bug fixes (merge to development)
+- **`hotfix/*`** - Critical fixes (merge to main and development)
+
+### Development Workflow
+
+```bash
+# Start new feature
+git checkout development
+git pull origin development
+git checkout -b feature/your-feature-name
+
+# Work on feature, commit changes
+git add .
+git commit -m "feat: Add new feature"
+git push origin feature/your-feature-name
+
+# Create Pull Request on GitHub
+# After approval and CI/CD passes, merge to development
+```
+
+**Important**: All changes to `main` and `development` must go through Pull Requests. Direct commits are not allowed.
+
+See [Git Workflow Documentation](./.github/GIT_WORKFLOW.md) for detailed guidelines.
 
 ## CI/CD Pipeline
 
-This project includes a comprehensive CI/CD pipeline that runs on every push to `main`:
+This project includes a comprehensive CI/CD pipeline that runs on every push to `main` and on pull requests to `main`:
 
 - ✅ **Automated Builds**: Compiles the entire solution
 - ✅ **Test Execution**: Runs all unit and integration tests
 - ✅ **Code Coverage**: Enforces minimum 80% code coverage
 - ✅ **Quality Gates**: Fails if tests fail or coverage is below threshold
 - ✅ **Artifacts**: Uploads test results and coverage reports
+- ✅ **PR Checks**: All pull requests are validated before merge
 
 See [CI/CD Documentation](./.github/CICD_DOCUMENTATION.md) for detailed information.
 
@@ -86,15 +135,28 @@ open ./coverage/report/index.html
 ## Documentation
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Detailed architectural decisions, patterns, and design rationale
+- [Git Workflow](./.github/GIT_WORKFLOW.md) - Branching strategy and development workflow
 - [CI/CD Documentation](./.github/CICD_DOCUMENTATION.md) - GitHub Actions pipeline and coverage setup
+- [Pull Request Template](./.github/pull_request_template.md) - PR template and guidelines
 - [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md) - Current implementation status
 
 ## Key Features
 
+### Architecture & Patterns
 - Clean Architecture with dependency inversion
 - Domain-Driven Design with aggregates and value objects
 - CQRS pattern separating reads (Dapper) and writes (EF Core)
 - MediatR for decoupled request handling
-- JWT-based stateless authentication
 - Microservice-ready patterns
 - Comprehensive validation and error handling
+
+### Multi-Tenant Authentication System
+- **Dual Authentication Model**:
+  - **Auth Admins**: System-level administrators who manage applications
+  - **Regular Users**: Application-scoped users with role-based access
+- **Application Management**: Register applications with unique codes and API keys
+- **Application-Scoped Roles**: Each application defines its own roles (not global)
+- **Secure API Key Authentication**: SHA-256 hashed API keys for application validation
+- **JWT Token Generation**: Application-scoped JWT tokens with role and permission claims
+- **Multi-Application Access**: Users can access multiple applications with different roles
+- **Flexible Authorization**: Policy-based authorization with application context

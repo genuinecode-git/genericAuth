@@ -11,5 +11,11 @@ public interface IApplicationDbContext
     DbSet<UserRole> UserRoles { get; }
     DbSet<RolePermission> RolePermissions { get; }
 
+    // Multi-tenant application entities
+    DbSet<Domain.Entities.Application> Applications { get; }
+    DbSet<ApplicationRole> ApplicationRoles { get; }
+    DbSet<UserApplication> UserApplications { get; }
+    DbSet<ApplicationRolePermission> ApplicationRolePermissions { get; }
+
     Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }
