@@ -1,0 +1,6 @@
+@GenericAuth.API_HostAddress = http://localhost:5071
+
+GET {{GenericAuth.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
