@@ -90,7 +90,7 @@ See [Git Workflow Documentation](./.github/GIT_WORKFLOW.md) for detailed guideli
 
 ## CI/CD Pipeline
 
-This project includes a comprehensive CI/CD pipeline that runs on every push to `main` and `development`:
+This project includes a comprehensive CI/CD pipeline that runs on every push to `main` and on pull requests to `main`:
 
 - ✅ **Automated Builds**: Compiles the entire solution
 - ✅ **Test Execution**: Runs all unit and integration tests
