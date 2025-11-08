@@ -3,6 +3,7 @@ using GenericAuth.Application.Common.Interfaces;
 using GenericAuth.Domain.Common;
 using GenericAuth.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
+using ApplicationEntity = GenericAuth.Domain.Entities.Application;
 
 namespace GenericAuth.Infrastructure.Persistence;
 
@@ -18,6 +19,12 @@ public class ApplicationDbContext : DbContext, IApplicationDbContext
     public DbSet<Permission> Permissions => Set<Permission>();
     public DbSet<UserRole> UserRoles => Set<UserRole>();
     public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
+    // Multi-tenant application entities
+    public DbSet<ApplicationEntity> Applications => Set<ApplicationEntity>();
+    public DbSet<ApplicationRole> ApplicationRoles => Set<ApplicationRole>();
+    public DbSet<UserApplication> UserApplications => Set<UserApplication>();
+    public DbSet<ApplicationRolePermission> ApplicationRolePermissions => Set<ApplicationRolePermission>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {

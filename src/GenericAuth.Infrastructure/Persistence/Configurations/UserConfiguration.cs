@@ -58,6 +58,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(u => u.LastLoginAt);
 
+        builder.Property(u => u.UserType)
+            .IsRequired()
+            .HasConversion<int>();
+
         builder.Property(u => u.CreatedAt)
             .IsRequired();
 
@@ -103,6 +107,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.HasMany(u => u.UserRoles)
             .WithOne(ur => ur.User)
             .HasForeignKey(ur => ur.UserId)
+            .OnDelete(DeleteBehavior.Cascade);
+
+        builder.HasMany(u => u.UserApplications)
+            .WithOne(ua => ua.User)
+            .HasForeignKey(ua => ua.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
         // Ignore domain events

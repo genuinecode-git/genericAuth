@@ -17,9 +17,9 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Database - EF Core
+        // Database - EF Core with SQLite (cross-platform)
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseSqlServer(
+            options.UseSqlite(
                 configuration.GetConnectionString("DefaultConnection"),
                 b => b.MigrationsAssembly(typeof(ApplicationDbContext).Assembly.FullName)));
 
@@ -42,6 +42,9 @@ public static class DependencyInjection
 
         // Services
         services.AddTransient<IDateTime, DateTimeService>();
+
+        // Database Seeder
+        services.AddScoped<DatabaseSeeder>();
 
         return services;
     }

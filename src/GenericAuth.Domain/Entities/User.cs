@@ -1,4 +1,5 @@
 using GenericAuth.Domain.Common;
+using GenericAuth.Domain.Enums;
 using GenericAuth.Domain.Events;
 using GenericAuth.Domain.Exceptions;
 using GenericAuth.Domain.ValueObjects;
@@ -16,8 +17,18 @@ public class User : BaseEntity
     public string? EmailConfirmationToken { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
 
+    /// <summary>
+    /// Type of user: Regular (application-scoped) or AuthAdmin (system-level).
+    /// </summary>
+    public UserType UserType { get; private set; }
+
+    // System-level roles (for Auth Admins)
     private readonly List<UserRole> _userRoles = new();
     public IReadOnlyCollection<UserRole> UserRoles => _userRoles.AsReadOnly();
+
+    // Application-scoped assignments (for Regular users)
+    private readonly List<UserApplication> _userApplications = new();
+    public IReadOnlyCollection<UserApplication> UserApplications => _userApplications.AsReadOnly();
 
     private readonly List<RefreshToken> _refreshTokens = new();
     public IReadOnlyCollection<RefreshToken> RefreshTokens => _refreshTokens.AsReadOnly();
@@ -25,18 +36,19 @@ public class User : BaseEntity
     // EF Core constructor
     private User() { }
 
-    private User(string firstName, string lastName, Email email, Password password)
+    private User(string firstName, string lastName, Email email, Password password, UserType userType)
     {
         FirstName = firstName;
         LastName = lastName;
         Email = email;
         Password = password;
+        UserType = userType;
         IsActive = true;
         IsEmailConfirmed = false;
         EmailConfirmationToken = Guid.NewGuid().ToString("N");
     }
 
-    public static User Create(string firstName, string lastName, string email, string passwordHash)
+    public static User Create(string firstName, string lastName, string email, string passwordHash, UserType userType = UserType.Regular)
     {
         if (string.IsNullOrWhiteSpace(firstName))
             throw new DomainException("First name cannot be empty.");
@@ -47,9 +59,17 @@ public class User : BaseEntity
         var userEmail = Email.Create(email);
         var userPassword = Password.Create(passwordHash);
 
-        var user = new User(firstName, lastName, userEmail, userPassword);
+        var user = new User(firstName, lastName, userEmail, userPassword, userType);
         user.AddDomainEvent(new UserRegisteredEvent(user.Id, user.Email.Value));
         return user;
+    }
+
+    /// <summary>
+    /// Creates an Auth Admin user with system-level privileges.
+    /// </summary>
+    public static User CreateAuthAdmin(string firstName, string lastName, string email, string passwordHash)
+    {
+        return Create(firstName, lastName, email, passwordHash, UserType.AuthAdmin);
     }
 
     public void UpdateProfile(string firstName, string lastName, string? updatedBy = null)
@@ -138,5 +158,80 @@ public class User : BaseEntity
 
         _userRoles.Remove(userRole);
         SetUpdatedInfo();
+    }
+
+    /// <summary>
+    /// Checks if user is an Auth Admin with system-level privileges.
+    /// </summary>
+    public bool IsAuthAdmin() => UserType == UserType.AuthAdmin;
+
+    /// <summary>
+    /// Checks if user has access to a specific application.
+    /// </summary>
+    public bool HasAccessToApplication(Guid applicationId)
+    {
+        if (IsAuthAdmin())
+            return true; // Auth admins have access to all applications
+
+        return _userApplications.Any(ua => ua.ApplicationId == applicationId && ua.IsActive);
+    }
+
+    /// <summary>
+    /// Gets the user's role in a specific application.
+    /// </summary>
+    public UserApplication GetApplicationAssignment(Guid applicationId)
+    {
+        var assignment = _userApplications.FirstOrDefault(ua => ua.ApplicationId == applicationId);
+        if (assignment == null)
+        {
+            throw new DomainException("User is not assigned to this application.");
+        }
+
+        return assignment;
+    }
+
+    /// <summary>
+    /// Assigns this user to an application with a specific role.
+    /// This method is used internally; external assignment should go through the Application aggregate.
+    /// </summary>
+    internal void AddApplicationAssignment(UserApplication userApplication)
+    {
+        if (_userApplications.Any(ua => ua.ApplicationId == userApplication.ApplicationId))
+        {
+            throw new DomainException("User is already assigned to this application.");
+        }
+
+        _userApplications.Add(userApplication);
+    }
+
+    /// <summary>
+    /// Removes an application assignment from this user.
+    /// This method is used internally; external removal should go through the Application aggregate.
+    /// </summary>
+    internal void RemoveApplicationAssignment(Guid applicationId)
+    {
+        var assignment = _userApplications.FirstOrDefault(ua => ua.ApplicationId == applicationId);
+        if (assignment == null)
+        {
+            throw new DomainException("User is not assigned to this application.");
+        }
+
+        _userApplications.Remove(assignment);
+    }
+
+    /// <summary>
+    /// Records a login for a specific application.
+    /// </summary>
+    public void RecordLogin(Guid? applicationId = null)
+    {
+        LastLoginAt = DateTime.UtcNow;
+        AddDomainEvent(new UserLoggedInEvent(Id, Email.Value));
+
+        // Record application-specific access
+        if (applicationId.HasValue && !IsAuthAdmin())
+        {
+            var assignment = _userApplications.FirstOrDefault(ua => ua.ApplicationId == applicationId.Value);
+            assignment?.RecordAccess();
+        }
     }
 }
