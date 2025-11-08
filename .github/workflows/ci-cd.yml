@@ -1,0 +1,174 @@
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  DOTNET_VERSION: '8.0.x'
+  SOLUTION_PATH: 'GenericAuth.sln'
+  COVERAGE_THRESHOLD: 80
+
+jobs:
+  build-test-coverage:
+    name: Build, Test & Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0  # Shallow clones disabled for better analysis
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: ${{ env.DOTNET_VERSION }}
+
+    - name: Cache NuGet packages
+      uses: actions/cache@v4
+      with:
+        path: ~/.nuget/packages
+        key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+        restore-keys: |
+          ${{ runner.os }}-nuget-
+
+    - name: Restore dependencies
+      run: dotnet restore ${{ env.SOLUTION_PATH }}
+
+    - name: Build solution
+      run: dotnet build ${{ env.SOLUTION_PATH }} --configuration Release --no-restore
+
+    - name: Run Domain Unit Tests with Coverage
+      run: |
+        dotnet test tests/GenericAuth.Domain.UnitTests/GenericAuth.Domain.UnitTests.csproj \
+          --configuration Release \
+          --no-build \
+          --verbosity normal \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./coverage/domain \
+          --logger "trx;LogFileName=domain-test-results.trx" \
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+    - name: Run Application Unit Tests with Coverage
+      run: |
+        dotnet test tests/GenericAuth.Application.UnitTests/GenericAuth.Application.UnitTests.csproj \
+          --configuration Release \
+          --no-build \
+          --verbosity normal \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./coverage/application \
+          --logger "trx;LogFileName=application-test-results.trx" \
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+    - name: Run Infrastructure Integration Tests with Coverage
+      run: |
+        dotnet test tests/GenericAuth.Infrastructure.IntegrationTests/GenericAuth.Infrastructure.IntegrationTests.csproj \
+          --configuration Release \
+          --no-build \
+          --verbosity normal \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./coverage/infrastructure \
+          --logger "trx;LogFileName=infrastructure-test-results.trx" \
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+    - name: Run API Integration Tests with Coverage
+      run: |
+        dotnet test tests/GenericAuth.API.IntegrationTests/GenericAuth.API.IntegrationTests.csproj \
+          --configuration Release \
+          --no-build \
+          --verbosity normal \
+          --collect:"XPlat Code Coverage" \
+          --results-directory ./coverage/api \
+          --logger "trx;LogFileName=api-test-results.trx" \
+          -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover
+
+    - name: Install ReportGenerator
+      run: dotnet tool install -g dotnet-reportgenerator-globaltool
+
+    - name: Generate Coverage Report
+      run: |
+        reportgenerator \
+          -reports:"./coverage/**/coverage.opencover.xml" \
+          -targetdir:"./coverage/report" \
+          -reporttypes:"Html;JsonSummary;Badges;Cobertura" \
+          -verbosity:"Info"
+
+    - name: Display Coverage Summary
+      run: |
+        echo "## Code Coverage Summary" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        if [ -f "./coverage/report/Summary.json" ]; then
+          COVERAGE=$(cat ./coverage/report/Summary.json | grep -o '"linecoverage":"[^"]*' | cut -d'"' -f4)
+          echo "**Line Coverage:** $COVERAGE%" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          cat ./coverage/report/Summary.json | python3 -m json.tool >> $GITHUB_STEP_SUMMARY || true
+        else
+          echo "Coverage report not generated" >> $GITHUB_STEP_SUMMARY
+        fi
+
+    - name: Check Coverage Threshold
+      run: |
+        if [ -f "./coverage/report/Summary.json" ]; then
+          COVERAGE=$(cat ./coverage/report/Summary.json | grep -o '"linecoverage":"[^"]*' | cut -d'"' -f4)
+          echo "Current Coverage: $COVERAGE%"
+          echo "Required Coverage: ${{ env.COVERAGE_THRESHOLD }}%"
+
+          COVERAGE_INT=${COVERAGE%.*}
+          if [ "$COVERAGE_INT" -lt "${{ env.COVERAGE_THRESHOLD }}" ]; then
+            echo "❌ Coverage check FAILED: $COVERAGE% is below the required ${{ env.COVERAGE_THRESHOLD }}%"
+            exit 1
+          else
+            echo "✅ Coverage check PASSED: $COVERAGE% meets the required ${{ env.COVERAGE_THRESHOLD }}%"
+          fi
+        else
+          echo "❌ Coverage report not found"
+          exit 1
+        fi
+
+    - name: Upload Test Results
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: test-results
+        path: |
+          ./coverage/**/*.trx
+        retention-days: 30
+
+    - name: Upload Coverage Report
+      if: always()
+      uses: actions/upload-artifact@v4
+      with:
+        name: coverage-report
+        path: ./coverage/report/
+        retention-days: 30
+
+    - name: Upload Coverage to Codecov (Optional)
+      if: always()
+      uses: codecov/codecov-action@v4
+      with:
+        files: ./coverage/report/Cobertura.xml
+        flags: unittests
+        name: codecov-coverage
+        fail_ci_if_error: false
+        token: ${{ secrets.CODECOV_TOKEN }}
+      continue-on-error: true
+
+    - name: Comment PR with Coverage
+      if: github.event_name == 'pull_request'
+      uses: marocchino/sticky-pull-request-comment@v2
+      with:
+        recreate: true
+        path: ./coverage/report/Summary.json
+      continue-on-error: true
+
+    - name: Build Status Badge
+      run: |
+        echo "Build completed successfully ✅"
+        echo "All tests passed ✅"
+        if [ -f "./coverage/report/Summary.json" ]; then
+          COVERAGE=$(cat ./coverage/report/Summary.json | grep -o '"linecoverage":"[^"]*' | cut -d'"' -f4)
+          echo "Code Coverage: $COVERAGE% ✅"
+        fi
