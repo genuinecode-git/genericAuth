@@ -56,15 +56,48 @@ dotnet ef database update --project src/GenericAuth.Infrastructure --startup-pro
 dotnet run --project src/GenericAuth.API
 ```
 
+## Git Workflow & Branching Strategy
+
+This project follows a **Git Flow** workflow with protected branches:
+
+### Branches
+- **`main`** - Production-ready code (protected, requires PR)
+- **`development`** - Active development (default branch)
+- **`feature/*`** - New features (merge to development)
+- **`bugfix/*`** - Bug fixes (merge to development)
+- **`hotfix/*`** - Critical fixes (merge to main and development)
+
+### Development Workflow
+
+```bash
+# Start new feature
+git checkout development
+git pull origin development
+git checkout -b feature/your-feature-name
+
+# Work on feature, commit changes
+git add .
+git commit -m "feat: Add new feature"
+git push origin feature/your-feature-name
+
+# Create Pull Request on GitHub
+# After approval and CI/CD passes, merge to development
+```
+
+**Important**: All changes to `main` and `development` must go through Pull Requests. Direct commits are not allowed.
+
+See [Git Workflow Documentation](./.github/GIT_WORKFLOW.md) for detailed guidelines.
+
 ## CI/CD Pipeline
 
-This project includes a comprehensive CI/CD pipeline that runs on every push to `main`:
+This project includes a comprehensive CI/CD pipeline that runs on every push to `main` and `development`:
 
 - ✅ **Automated Builds**: Compiles the entire solution
 - ✅ **Test Execution**: Runs all unit and integration tests
 - ✅ **Code Coverage**: Enforces minimum 80% code coverage
 - ✅ **Quality Gates**: Fails if tests fail or coverage is below threshold
 - ✅ **Artifacts**: Uploads test results and coverage reports
+- ✅ **PR Checks**: All pull requests are validated before merge
 
 See [CI/CD Documentation](./.github/CICD_DOCUMENTATION.md) for detailed information.
 
@@ -86,7 +119,9 @@ open ./coverage/report/index.html
 ## Documentation
 
 - [ARCHITECTURE.md](./ARCHITECTURE.md) - Detailed architectural decisions, patterns, and design rationale
+- [Git Workflow](./.github/GIT_WORKFLOW.md) - Branching strategy and development workflow
 - [CI/CD Documentation](./.github/CICD_DOCUMENTATION.md) - GitHub Actions pipeline and coverage setup
+- [Pull Request Template](./.github/pull_request_template.md) - PR template and guidelines
 - [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md) - Current implementation status
 
 ## Key Features
