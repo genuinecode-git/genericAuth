@@ -11,6 +11,20 @@ var builder = WebApplication.CreateBuilder(args);
 // Add services to the container
 builder.Services.AddControllers();
 
+// Add API Versioning
+builder.Services.AddApiVersioning(options =>
+{
+    options.DefaultApiVersion = new Asp.Versioning.ApiVersion(1, 0);
+    options.AssumeDefaultVersionWhenUnspecified = true;
+    options.ReportApiVersions = true;
+    options.ApiVersionReader = new Asp.Versioning.UrlSegmentApiVersionReader();
+})
+.AddApiExplorer(options =>
+{
+    options.GroupNameFormat = "'v'VVV";
+    options.SubstituteApiVersionInUrl = true;
+});
+
 // Add Application layer services (MediatR, FluentValidation, AutoMapper)
 builder.Services.AddApplication();
 
@@ -61,11 +75,12 @@ builder.Services.AddAuthorization(options =>
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(c =>
 {
+    // Configure Swagger for API versioning
     c.SwaggerDoc("v1", new OpenApiInfo
     {
         Title = "GenericAuth API",
         Version = "v1",
-        Description = "Multi-Tenant Authentication & Authorization API",
+        Description = "Multi-Tenant Authentication & Authorization API - Version 1",
         Contact = new OpenApiContact
         {
             Name = "GenericAuth Team"
@@ -147,6 +162,7 @@ if (app.Environment.IsDevelopment())
     {
         c.SwaggerEndpoint("/swagger/v1/swagger.json", "GenericAuth API V1");
         c.RoutePrefix = string.Empty; // Swagger at root
+        c.DisplayRequestDuration(); // Show request duration in Swagger UI
     });
 }
 
@@ -170,3 +186,6 @@ app.MapControllers();
 app.MapHealthChecks("/health");
 
 app.Run();
+
+// Make the implicit Program class public for integration testing
+public partial class Program { }

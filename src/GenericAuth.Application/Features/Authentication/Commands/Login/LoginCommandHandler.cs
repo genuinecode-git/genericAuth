@@ -59,7 +59,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginCom
 
         // Generate and store refresh token
         var refreshTokenString = _jwtTokenGenerator.GenerateRefreshToken();
-        var refreshToken = RefreshToken.Create(refreshTokenString, validityInDays: 7);
+        var refreshToken = Domain.ValueObjects.RefreshToken.Create(refreshTokenString, validityInDays: 7);
         user.AddRefreshToken(refreshToken);
 
         // Record login

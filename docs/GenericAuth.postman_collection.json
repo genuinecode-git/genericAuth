@@ -1,0 +1,1078 @@
+{
+  "info": {
+    "name": "GenericAuth API",
+    "description": "Complete API collection for GenericAuth multi-tenant authentication system",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "version": "1.0.0"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{auth_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:5000",
+      "type": "string"
+    },
+    {
+      "key": "api_version",
+      "value": "v1",
+      "type": "string"
+    },
+    {
+      "key": "auth_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "user_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "application_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "role_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data && response.data.id) {",
+                  "        pm.collectionVariables.set('user_id', response.data.id);",
+                  "        pm.test('User ID saved', () => {",
+                  "            pm.expect(response.data.id).to.be.a('string');",
+                  "        });",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has success field', () => {",
+                  "    pm.expect(pm.response.json()).to.have.property('success');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"email\": \"john.doe@example.com\",\n  \"password\": \"SecureP@ssw0rd123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/auth/register",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "auth", "register"]
+            },
+            "description": "Register a new user account (creates Regular user by default)"
+          },
+          "response": []
+        },
+        {
+          "name": "Login (Auth Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data) {",
+                  "        pm.collectionVariables.set('auth_token', response.data.accessToken);",
+                  "        pm.collectionVariables.set('refresh_token', response.data.refreshToken);",
+                  "        pm.test('Tokens saved', () => {",
+                  "            pm.expect(response.data.accessToken).to.be.a('string');",
+                  "            pm.expect(response.data.refreshToken).to.be.a('string');",
+                  "        });",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response contains access token', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response.data).to.have.property('accessToken');",
+                  "    pm.expect(response.data).to.have.property('refreshToken');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@genericauth.com\",\n  \"password\": \"Admin@123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "auth", "login"]
+            },
+            "description": "Login as Auth Admin user (no applicationId required)"
+          },
+          "response": []
+        },
+        {
+          "name": "Login (Regular User)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data) {",
+                  "        pm.collectionVariables.set('auth_token', response.data.accessToken);",
+                  "        pm.collectionVariables.set('refresh_token', response.data.refreshToken);",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"User@123456\",\n  \"applicationId\": \"{{application_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/auth/login",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "auth", "login"]
+            },
+            "description": "Login as Regular user (requires applicationId)"
+          },
+          "response": []
+        },
+        {
+          "name": "Refresh Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data) {",
+                  "        pm.collectionVariables.set('auth_token', response.data.accessToken);",
+                  "        pm.collectionVariables.set('refresh_token', response.data.refreshToken);",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/auth/refresh",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "auth", "refresh"]
+            },
+            "description": "Refresh access token using refresh token"
+          },
+          "response": []
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refresh_token}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/auth/logout",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "auth", "logout"]
+            },
+            "description": "Logout and revoke refresh token"
+          },
+          "response": []
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/auth/forgot-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "auth", "forgot-password"]
+            },
+            "description": "Request password reset token"
+          },
+          "response": []
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"john.doe@example.com\",\n  \"resetToken\": \"your-reset-token\",\n  \"newPassword\": \"NewSecureP@ssw0rd123\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/auth/reset-password",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "auth", "reset-password"]
+            },
+            "description": "Reset password using token"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Get All Users",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response has pagination', () => {",
+                  "    const response = pm.response.json();",
+                  "    pm.expect(response).to.have.property('pagination');",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/users?pageNumber=1&pageSize=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "users"],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "searchTerm",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "userType",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get paginated list of all users (Auth Admin only)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "users", "{{user_id}}"]
+            },
+            "description": "Get user details by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Smith\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "users", "{{user_id}}"]
+            },
+            "description": "Update user profile information"
+          },
+          "response": []
+        },
+        {
+          "name": "Activate User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/users/{{user_id}}/activate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "users", "{{user_id}}", "activate"]
+            },
+            "description": "Activate user account"
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/users/{{user_id}}/deactivate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "users", "{{user_id}}", "deactivate"]
+            },
+            "description": "Deactivate user account"
+          },
+          "response": []
+        },
+        {
+          "name": "Assign System Role to User",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/users/{{user_id}}/roles/{{role_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "users", "{{user_id}}", "roles", "{{role_id}}"]
+            },
+            "description": "Assign system role to Auth Admin user"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove System Role from User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/users/{{user_id}}/roles/{{role_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "users", "{{user_id}}", "roles", "{{role_id}}"]
+            },
+            "description": "Remove system role from Auth Admin user"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Applications",
+      "item": [
+        {
+          "name": "Create Application",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data && response.data.applicationId) {",
+                  "        pm.collectionVariables.set('application_id', response.data.applicationId);",
+                  "        pm.test('Application ID saved', () => {",
+                  "            pm.expect(response.data.applicationId).to.be.a('string');",
+                  "        });",
+                  "        console.log('API Key:', response.data.apiKey);",
+                  "        console.log('IMPORTANT: Save this API key - it will not be shown again!');",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Application\",\n  \"code\": \"MY_APP\",\n  \"initialRoles\": [\n    {\n      \"name\": \"Admin\",\n      \"description\": \"Application administrator\",\n      \"isDefault\": false\n    },\n    {\n      \"name\": \"User\",\n      \"description\": \"Standard user\",\n      \"isDefault\": true\n    },\n    {\n      \"name\": \"Guest\",\n      \"description\": \"Guest access\",\n      \"isDefault\": false\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/applications",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "applications"]
+            },
+            "description": "Create new application with initial roles. Returns API key (shown only once!)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Application By Code",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/applications/by-code/MY_APP",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "applications", "by-code", "MY_APP"]
+            },
+            "description": "Get application details by code"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Application Roles",
+      "item": [
+        {
+          "name": "Get Application Roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/applications/{{application_id}}/roles?pageNumber=1&pageSize=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "applications", "{{application_id}}", "roles"],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "searchTerm",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "isActive",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get roles for a specific application"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Application Role By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/applications/{{application_id}}/roles/{{role_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "applications", "{{application_id}}", "roles", "{{role_id}}"]
+            },
+            "description": "Get application role details"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Application Role",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    const response = pm.response.json();",
+                  "    if (response.success && response.data && response.data.id) {",
+                  "        pm.collectionVariables.set('role_id', response.data.id);",
+                  "    }",
+                  "}",
+                  "",
+                  "pm.test('Status code is 200', () => {",
+                  "    pm.response.to.have.status(200);",
+                  "});"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Moderator\",\n  \"description\": \"Content moderator\",\n  \"isDefault\": false\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/applications/{{application_id}}/roles",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "applications", "{{application_id}}", "roles"]
+            },
+            "description": "Create new role for application"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Application Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Senior Moderator\",\n  \"description\": \"Senior content moderator\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/applications/{{application_id}}/roles/{{role_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "applications", "{{application_id}}", "roles", "{{role_id}}"]
+            },
+            "description": "Update application role"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Application Role",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/applications/{{application_id}}/roles/{{role_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "applications", "{{application_id}}", "roles", "{{role_id}}"]
+            },
+            "description": "Delete application role"
+          },
+          "response": []
+        },
+        {
+          "name": "Activate Application Role",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/applications/{{application_id}}/roles/{{role_id}}/activate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "applications", "{{application_id}}", "roles", "{{role_id}}", "activate"]
+            },
+            "description": "Activate application role"
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate Application Role",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/applications/{{application_id}}/roles/{{role_id}}/deactivate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "applications", "{{application_id}}", "roles", "{{role_id}}", "deactivate"]
+            },
+            "description": "Deactivate application role"
+          },
+          "response": []
+        },
+        {
+          "name": "Set Default Application Role",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/applications/{{application_id}}/roles/{{role_id}}/set-default",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "applications", "{{application_id}}", "roles", "{{role_id}}", "set-default"]
+            },
+            "description": "Set role as default for application"
+          },
+          "response": []
+        },
+        {
+          "name": "Add Permission to Application Role",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/applications/{{application_id}}/roles/{{role_id}}/permissions/permission-guid",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "{{api_version}}",
+                "applications",
+                "{{application_id}}",
+                "roles",
+                "{{role_id}}",
+                "permissions",
+                "permission-guid"
+              ]
+            },
+            "description": "Add permission to application role"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Permission from Application Role",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/applications/{{application_id}}/roles/{{role_id}}/permissions/permission-guid",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "{{api_version}}",
+                "applications",
+                "{{application_id}}",
+                "roles",
+                "{{role_id}}",
+                "permissions",
+                "permission-guid"
+              ]
+            },
+            "description": "Remove permission from application role"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "System Roles",
+      "item": [
+        {
+          "name": "Get All System Roles",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/roles?pageNumber=1&pageSize=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "roles"],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "searchTerm",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "isActive",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get all system roles"
+          },
+          "response": []
+        },
+        {
+          "name": "Get System Role By ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/roles/{{role_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "roles", "{{role_id}}"]
+            },
+            "description": "Get system role details"
+          },
+          "response": []
+        },
+        {
+          "name": "Create System Role",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Support Admin\",\n  \"description\": \"Support team administrator\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/roles",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "roles"]
+            },
+            "description": "Create new system role"
+          },
+          "response": []
+        },
+        {
+          "name": "Update System Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Senior Support Admin\",\n  \"description\": \"Senior support administrator\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/roles/{{role_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "roles", "{{role_id}}"]
+            },
+            "description": "Update system role"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete System Role",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/roles/{{role_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "roles", "{{role_id}}"]
+            },
+            "description": "Delete system role"
+          },
+          "response": []
+        },
+        {
+          "name": "Activate System Role",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/roles/{{role_id}}/activate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "roles", "{{role_id}}", "activate"]
+            },
+            "description": "Activate system role"
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate System Role",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/roles/{{role_id}}/deactivate",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "roles", "{{role_id}}", "deactivate"]
+            },
+            "description": "Deactivate system role"
+          },
+          "response": []
+        },
+        {
+          "name": "Add Permission to System Role",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/roles/{{role_id}}/permissions/permission-guid",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "roles", "{{role_id}}", "permissions", "permission-guid"]
+            },
+            "description": "Add permission to system role"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Permission from System Role",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/roles/{{role_id}}/permissions/permission-guid",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "roles", "{{role_id}}", "permissions", "permission-guid"]
+            },
+            "description": "Remove permission from system role"
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User-Application Assignments",
+      "item": [
+        {
+          "name": "Assign User to Application",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{user_id}}\",\n  \"applicationCode\": \"MY_APP\",\n  \"roleName\": \"User\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/user-applications",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "user-applications"]
+            },
+            "description": "Assign user to application with role"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Applications",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/user-applications/users/{{user_id}}/applications",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "user-applications", "users", "{{user_id}}", "applications"]
+            },
+            "description": "Get all applications assigned to a user"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Application Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/user-applications/applications/MY_APP/users?pageNumber=1&pageSize=10",
+              "host": ["{{base_url}}"],
+              "path": ["api", "{{api_version}}", "user-applications", "applications", "MY_APP", "users"],
+              "query": [
+                {
+                  "key": "pageNumber",
+                  "value": "1"
+                },
+                {
+                  "key": "pageSize",
+                  "value": "10"
+                },
+                {
+                  "key": "searchTerm",
+                  "value": "",
+                  "disabled": true
+                },
+                {
+                  "key": "isActive",
+                  "value": "",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Get all users assigned to an application"
+          },
+          "response": []
+        },
+        {
+          "name": "Change User Application Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newApplicationRoleId\": \"{{role_id}}\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/user-applications/users/{{user_id}}/applications/MY_APP/role",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "{{api_version}}",
+                "user-applications",
+                "users",
+                "{{user_id}}",
+                "applications",
+                "MY_APP",
+                "role"
+              ]
+            },
+            "description": "Change user's role within an application"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove User from Application",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/{{api_version}}/user-applications/users/{{user_id}}/applications/MY_APP",
+              "host": ["{{base_url}}"],
+              "path": [
+                "api",
+                "{{api_version}}",
+                "user-applications",
+                "users",
+                "{{user_id}}",
+                "applications",
+                "MY_APP"
+              ]
+            },
+            "description": "Remove user from application"
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

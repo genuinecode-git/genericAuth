@@ -16,6 +16,8 @@ public class User : BaseEntity
     public bool IsEmailConfirmed { get; private set; }
     public string? EmailConfirmationToken { get; private set; }
     public DateTime? LastLoginAt { get; private set; }
+    public string? PasswordResetToken { get; private set; }
+    public DateTime? PasswordResetTokenExpiresAt { get; private set; }
 
     /// <summary>
     /// Type of user: Regular (application-scoped) or AuthAdmin (system-level).
@@ -139,6 +141,45 @@ public class User : BaseEntity
 
         refreshToken.Revoke(replacedByToken);
         SetUpdatedInfo();
+    }
+
+    public void RevokeAllRefreshTokens()
+    {
+        foreach (var token in _refreshTokens.Where(rt => rt.IsActive))
+        {
+            token.Revoke();
+        }
+        SetUpdatedInfo();
+    }
+
+    public RefreshToken? GetActiveRefreshToken(string token)
+    {
+        return _refreshTokens.FirstOrDefault(rt => rt.Token == token && rt.IsActive);
+    }
+
+    public void SetPasswordResetToken(string hashedToken, DateTime expiresAt)
+    {
+        PasswordResetToken = hashedToken;
+        PasswordResetTokenExpiresAt = expiresAt;
+        SetUpdatedInfo();
+    }
+
+    public void ClearPasswordResetToken()
+    {
+        PasswordResetToken = null;
+        PasswordResetTokenExpiresAt = null;
+        SetUpdatedInfo();
+    }
+
+    public bool ValidatePasswordResetToken(string hashedToken)
+    {
+        if (string.IsNullOrEmpty(PasswordResetToken))
+            return false;
+
+        if (PasswordResetTokenExpiresAt == null || PasswordResetTokenExpiresAt < DateTime.UtcNow)
+            return false;
+
+        return PasswordResetToken == hashedToken;
     }
 
     public void AddRole(UserRole userRole)

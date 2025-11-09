@@ -6,7 +6,7 @@
 [![.NET Version](https://img.shields.io/badge/.NET-8.0-purple)]()
 [![License](https://img.shields.io/badge/license-MIT-blue)]()
 
-A production-ready .NET Core API implementing Clean Architecture, Domain-Driven Design (DDD), CQRS pattern with MediatR, microservice patterns, EF Core, and Dapper.
+A production-ready multi-tenant authentication and authorization API built with Clean Architecture, Domain-Driven Design (DDD), CQRS pattern with MediatR, and comprehensive role-based access control.
 
 ## Architecture Overview
 
@@ -20,28 +20,25 @@ This project follows Clean Architecture principles with clear separation of conc
 ## Technology Stack
 
 - **.NET 8.0** with C# 12
-- **EF Core 9.0** for write operations (Commands)
-- **Dapper** for read operations (Queries)
+- **EF Core 8.0** for data access
 - **MediatR** for CQRS implementation
 - **FluentValidation** for request validation
-- **JWT Bearer** for authentication
+- **JWT Bearer** authentication with refresh tokens
 - **SQL Server** database
-- **xUnit** for testing
+- **xUnit** for unit and integration testing
+- **Swagger/OpenAPI** for API documentation
 
-## Project Status
+## What is GenericAuth?
 
-### ✅ Completed
-- Solution structure with Clean Architecture layers
-- Domain layer with DDD patterns (Entities, Value Objects, Domain Events)
-- Application layer with CQRS and MediatR
-- Infrastructure layer setup (packages installed)
+GenericAuth is a comprehensive multi-tenant authentication and authorization system that provides:
 
-### 🚧 Next Steps
-1. Complete Infrastructure implementations (EF configurations, repositories, JWT, password hasher)
-2. Set up API layer with controllers and authentication
-3. Configure dependency injection
-4. Add database migrations
-5. Build and test the solution
+- **Multi-Tenant Architecture**: Application-scoped roles for complete tenant isolation
+- **Dual User Types**: Auth Admins (system administrators) and Regular Users (application users)
+- **JWT Authentication**: Secure token-based authentication with automatic refresh
+- **Role-Based Access Control**: Granular permissions for both system and application roles
+- **Clean Architecture**: Separation of concerns with Domain, Application, Infrastructure, and API layers
+- **CQRS Pattern**: Command Query Responsibility Segregation using MediatR
+- **Production-Ready**: Comprehensive testing, CI/CD, and enterprise-grade code quality
 
 ## Quick Start
 
@@ -134,29 +131,197 @@ open ./coverage/report/index.html
 
 ## Documentation
 
-- [ARCHITECTURE.md](./ARCHITECTURE.md) - Detailed architectural decisions, patterns, and design rationale
-- [Git Workflow](./.github/GIT_WORKFLOW.md) - Branching strategy and development workflow
-- [CI/CD Documentation](./.github/CICD_DOCUMENTATION.md) - GitHub Actions pipeline and coverage setup
-- [Pull Request Template](./.github/pull_request_template.md) - PR template and guidelines
-- [IMPLEMENTATION_STATUS.md](./IMPLEMENTATION_STATUS.md) - Current implementation status
+### API Documentation
+- **[API Reference](./docs/API_REFERENCE.md)** - Complete API endpoint documentation with examples
+- **[Getting Started Guide](./docs/GETTING_STARTED.md)** - Quick start guide and common workflows
+- **[Architecture Guide](./docs/ARCHITECTURE_GUIDE.md)** - System architecture, patterns, and design
+- **[Postman Collection](./docs/GenericAuth.postman_collection.json)** - Import into Postman for testing
+
+### Development
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** - Original architectural decisions and design rationale
+- **[Testing Guide](./TESTING_GUIDE.md)** - Complete testing workflows and scenarios
+- **[Git Workflow](./.github/GIT_WORKFLOW.md)** - Branching strategy and development workflow
+- **[CI/CD Documentation](./.github/CICD_DOCUMENTATION.md)** - GitHub Actions pipeline and coverage
+- **[Pull Request Template](./.github/pull_request_template.md)** - PR template and guidelines
 
 ## Key Features
 
-### Architecture & Patterns
-- Clean Architecture with dependency inversion
-- Domain-Driven Design with aggregates and value objects
-- CQRS pattern separating reads (Dapper) and writes (EF Core)
-- MediatR for decoupled request handling
-- Microservice-ready patterns
-- Comprehensive validation and error handling
+### Multi-Tenant Authentication
+- **Application-Scoped Roles**: Each application (tenant) has isolated roles
+- **Dual User Types**:
+  - **Auth Admins**: System administrators managing all applications
+  - **Regular Users**: Application users with tenant-specific access
+- **JWT Token Authentication**: Secure token-based auth with 15-minute access tokens
+- **Refresh Token Rotation**: Automatic token refresh with 7-day refresh tokens
+- **Password Security**: PBKDF2 hashing with 100,000 iterations
+- **Multi-Application Access**: Users can belong to multiple applications with different roles
 
-### Multi-Tenant Authentication System
-- **Dual Authentication Model**:
-  - **Auth Admins**: System-level administrators who manage applications
-  - **Regular Users**: Application-scoped users with role-based access
-- **Application Management**: Register applications with unique codes and API keys
-- **Application-Scoped Roles**: Each application defines its own roles (not global)
-- **Secure API Key Authentication**: SHA-256 hashed API keys for application validation
-- **JWT Token Generation**: Application-scoped JWT tokens with role and permission claims
-- **Multi-Application Access**: Users can access multiple applications with different roles
-- **Flexible Authorization**: Policy-based authorization with application context
+### API Features
+- **Complete CRUD Operations**: Users, Applications, Roles, Permissions
+- **User Management**: Registration, activation, deactivation, profile updates
+- **Application Management**: Create applications with API keys and initial roles
+- **Role Management**: Both system roles (Auth Admin) and application roles (Regular users)
+- **Permission Management**: Granular permission assignment to roles
+- **User-Application Assignments**: Assign users to applications with specific roles
+- **Password Reset Flow**: Forgot password and reset password with tokens
+
+### Architecture & Patterns
+- **Clean Architecture**: Clear separation of Domain, Application, Infrastructure, and API layers
+- **Domain-Driven Design**: Rich domain models, aggregates, value objects, domain events
+- **CQRS Pattern**: Command Query Responsibility Segregation using MediatR
+- **Repository Pattern**: Abstraction over data access
+- **Unit of Work**: Transaction management
+- **Result Pattern**: Explicit error handling without exceptions
+- **Specification Pattern**: Encapsulated query logic
+- **Strategy Pattern**: Pluggable password hashing strategies
+
+### Security
+- **JWT Bearer Authentication**: Industry-standard token authentication
+- **Authorization Policies**: Policy-based authorization (AuthAdminOnly, RequireApplication)
+- **Password Requirements**: Enforced complexity rules
+- **API Key Authentication**: SHA-256 hashed API keys for applications
+- **Token Validation**: Issuer, audience, lifetime, and signature validation
+- **Refresh Token Security**: Single-use tokens with automatic rotation
+- **CORS Configuration**: Configurable cross-origin resource sharing
+
+### Development Experience
+- **Swagger/OpenAPI**: Interactive API documentation at root URL
+- **Automatic Seeding**: Default Auth Admin user on first run
+- **Comprehensive Validation**: FluentValidation for all inputs
+- **Detailed Error Messages**: User-friendly validation and error responses
+- **Postman Collection**: Ready-to-use API testing collection
+- **Integration Tests**: 80%+ code coverage with comprehensive test suite
+
+## Project Structure
+
+```
+genericAuth/
+├── src/
+│   ├── GenericAuth.API/              # API Layer (Controllers, Middleware)
+│   │   ├── Controllers/V1/           # Versioned API controllers
+│   │   ├── Middleware/               # Application authentication middleware
+│   │   └── Program.cs                # Application startup and configuration
+│   ├── GenericAuth.Application/      # Application Layer (CQRS, MediatR)
+│   │   ├── Features/                 # Organized by feature (not by layer)
+│   │   │   ├── Authentication/       # Login, Register, Refresh, etc.
+│   │   │   ├── Users/                # User management commands/queries
+│   │   │   ├── Applications/         # Application management
+│   │   │   ├── ApplicationRoles/     # Application role management
+│   │   │   ├── Roles/                # System role management
+│   │   │   └── UserApplications/     # User-Application assignments
+│   │   ├── Common/                   # Shared interfaces, models, behaviors
+│   │   └── DependencyInjection.cs    # Service registration
+│   ├── GenericAuth.Domain/           # Domain Layer (Entities, Value Objects)
+│   │   ├── Entities/                 # Domain entities (User, Application, etc.)
+│   │   ├── ValueObjects/             # Value objects (Email, PasswordHash)
+│   │   ├── Enums/                    # Domain enumerations
+│   │   ├── Events/                   # Domain events
+│   │   └── Common/                   # Base entity classes
+│   └── GenericAuth.Infrastructure/   # Infrastructure Layer (Data Access, Services)
+│       ├── Persistence/              # EF Core DbContext, configurations
+│       │   ├── Configurations/       # Entity type configurations
+│       │   ├── Migrations/           # Database migrations
+│       │   └── DatabaseSeeder.cs     # Data seeding
+│       ├── Identity/                 # Password hashing, JWT services
+│       └── DependencyInjection.cs    # Infrastructure service registration
+├── tests/
+│   ├── GenericAuth.Application.UnitTests/        # Unit tests for Application layer
+│   └── GenericAuth.API.IntegrationTests/         # Integration tests for API
+├── docs/
+│   ├── API_REFERENCE.md              # Complete API documentation
+│   ├── GETTING_STARTED.md            # Quick start guide
+│   ├── ARCHITECTURE_GUIDE.md         # Architecture deep dive
+│   └── GenericAuth.postman_collection.json  # Postman collection
+└── .github/
+    └── workflows/
+        └── ci-cd.yml                 # CI/CD pipeline
+```
+
+## API Endpoints
+
+### Authentication
+- `POST /api/v1/auth/register` - Register new user
+- `POST /api/v1/auth/login` - User login (Auth Admin or Regular)
+- `POST /api/v1/auth/refresh` - Refresh access token
+- `POST /api/v1/auth/logout` - Logout and revoke tokens
+- `POST /api/v1/auth/forgot-password` - Request password reset
+- `POST /api/v1/auth/reset-password` - Reset password with token
+
+### Users (Auth Admin Only)
+- `GET /api/v1/users` - List users (paginated)
+- `GET /api/v1/users/{id}` - Get user by ID
+- `PUT /api/v1/users/{id}` - Update user
+- `POST /api/v1/users/{id}/activate` - Activate user
+- `POST /api/v1/users/{id}/deactivate` - Deactivate user
+- `POST /api/v1/users/{userId}/roles/{roleId}` - Assign system role
+- `DELETE /api/v1/users/{userId}/roles/{roleId}` - Remove system role
+
+### Applications (Auth Admin Only)
+- `POST /api/v1/applications` - Create application with roles
+- `GET /api/v1/applications/by-code/{code}` - Get application by code
+
+### Application Roles (Auth Admin Only)
+- `GET /api/v1/applications/{appId}/roles` - List application roles
+- `GET /api/v1/applications/{appId}/roles/{roleId}` - Get role details
+- `POST /api/v1/applications/{appId}/roles` - Create role
+- `PUT /api/v1/applications/{appId}/roles/{roleId}` - Update role
+- `DELETE /api/v1/applications/{appId}/roles/{roleId}` - Delete role
+- `POST /api/v1/applications/{appId}/roles/{roleId}/activate` - Activate role
+- `POST /api/v1/applications/{appId}/roles/{roleId}/deactivate` - Deactivate role
+- `POST /api/v1/applications/{appId}/roles/{roleId}/set-default` - Set as default
+- `POST /api/v1/applications/{appId}/roles/{roleId}/permissions/{permissionId}` - Add permission
+- `DELETE /api/v1/applications/{appId}/roles/{roleId}/permissions/{permissionId}` - Remove permission
+
+### System Roles (Auth Admin Only)
+- `GET /api/v1/roles` - List system roles
+- `GET /api/v1/roles/{id}` - Get system role
+- `POST /api/v1/roles` - Create system role
+- `PUT /api/v1/roles/{id}` - Update system role
+- `DELETE /api/v1/roles/{id}` - Delete system role
+- `POST /api/v1/roles/{id}/activate` - Activate role
+- `POST /api/v1/roles/{id}/deactivate` - Deactivate role
+- `POST /api/v1/roles/{id}/permissions/{permissionId}` - Add permission
+- `DELETE /api/v1/roles/{id}/permissions/{permissionId}` - Remove permission
+
+### User-Application Assignments (Auth Admin Only)
+- `POST /api/v1/user-applications` - Assign user to application
+- `GET /api/v1/user-applications/users/{userId}/applications` - Get user's applications
+- `GET /api/v1/user-applications/applications/{appCode}/users` - Get application's users
+- `PUT /api/v1/user-applications/users/{userId}/applications/{appCode}/role` - Change user role
+- `DELETE /api/v1/user-applications/users/{userId}/applications/{appCode}` - Remove user from app
+
+See **[API Reference](./docs/API_REFERENCE.md)** for complete documentation with examples.
+
+## Contributing
+
+We welcome contributions! Please follow these guidelines:
+
+1. **Fork the repository** and create your feature branch from `development`
+2. **Follow the Git Workflow** described in [GIT_WORKFLOW.md](./.github/GIT_WORKFLOW.md)
+3. **Write tests** for new features (maintain 80%+ coverage)
+4. **Update documentation** if you change APIs or add features
+5. **Create a Pull Request** following the [PR template](./.github/pull_request_template.md)
+6. **Ensure CI/CD passes** before requesting review
+
+### Code Style
+- Follow C# coding conventions
+- Use meaningful names for variables and methods
+- Write XML documentation comments for public APIs
+- Keep methods small and focused (Single Responsibility Principle)
+- Use async/await for I/O operations
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+For questions, issues, or feature requests:
+- **Documentation**: See [docs/](./docs/) folder
+- **API Reference**: [API_REFERENCE.md](./docs/API_REFERENCE.md)
+- **Getting Started**: [GETTING_STARTED.md](./docs/GETTING_STARTED.md)
+- **Architecture**: [ARCHITECTURE_GUIDE.md](./docs/ARCHITECTURE_GUIDE.md)
+
+---
+
+**Built with Clean Architecture, DDD, and CQRS principles for enterprise-grade applications.**
