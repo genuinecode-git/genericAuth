@@ -56,6 +56,11 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.EmailConfirmationToken)
             .HasMaxLength(100);
 
+        builder.Property(u => u.PasswordResetToken)
+            .HasMaxLength(500);
+
+        builder.Property(u => u.PasswordResetTokenExpiresAt);
+
         builder.Property(u => u.LastLoginAt);
 
         builder.Property(u => u.UserType)
@@ -78,6 +83,7 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         {
             refreshToken.ToTable("RefreshTokens");
 
+            // Configure the foreign key explicitly
             refreshToken.WithOwner().HasForeignKey("UserId");
 
             refreshToken.Property<int>("Id")

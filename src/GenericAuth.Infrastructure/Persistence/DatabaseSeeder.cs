@@ -32,8 +32,13 @@ public class DatabaseSeeder
     {
         try
         {
-            // Ensure database is created and migrations are applied
-            await _context.Database.MigrateAsync();
+            // Ensure database is created (for production, migrations should be applied separately)
+            // For in-memory test databases, the schema is created by EnsureCreated in the test factory
+            // For production, migrations should be run before seeding
+            if (_context.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory")
+            {
+                await _context.Database.MigrateAsync();
+            }
 
             // Seed Auth Admin user
             await SeedAuthAdminUserAsync();

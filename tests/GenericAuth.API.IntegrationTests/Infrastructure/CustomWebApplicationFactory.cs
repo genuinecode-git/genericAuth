@@ -3,6 +3,7 @@ using GenericAuth.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -11,40 +12,52 @@ namespace GenericAuth.API.IntegrationTests.Infrastructure;
 
 /// <summary>
 /// Custom web application factory for integration tests.
-/// Configures the application to use an in-memory database.
+/// Configures the application to use an in-memory SQLite database.
 /// </summary>
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
+    private SqliteConnection? _connection;
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.ConfigureTestServices(services =>
+        // Configure test environment FIRST before services are built
+        // This prevents production SQLite registration in Infrastructure layer
+        builder.UseEnvironment("Testing");
+
+        // Use ConfigureServices to register SQLite in-memory database
+        // Since we're in Testing environment, Infrastructure won't register its SQLite
+        builder.ConfigureServices(services =>
         {
-            // Remove the actual database context registrations
-            var descriptorsToRemove = services
-                .Where(d => d.ServiceType == typeof(DbContextOptions<ApplicationDbContext>) ||
-                           d.ServiceType == typeof(ApplicationDbContext) ||
-                           d.ServiceType == typeof(IApplicationDbContext))
-                .ToList();
+            // Create and open the SQLite in-memory connection
+            // We must keep the connection open for the lifetime of the test
+            _connection = new SqliteConnection("DataSource=:memory:");
+            _connection.Open();
 
-            foreach (var descriptor in descriptorsToRemove)
-            {
-                services.Remove(descriptor);
-            }
-
-            // Add in-memory database for testing
+            // Add SQLite in-memory database for testing
             services.AddDbContext<ApplicationDbContext>(options =>
             {
-                options.UseInMemoryDatabase("InMemoryDbForTesting");
+                options.UseSqlite(_connection);
                 options.EnableSensitiveDataLogging();
+                options.EnableDetailedErrors();
+                // Suppress pending model changes warning for tests
+                options.ConfigureWarnings(warnings =>
+                    warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
             });
 
-            // Re-register DbContext as IApplicationDbContext
+            // Register DbContext as IApplicationDbContext
             services.AddScoped<IApplicationDbContext>(provider =>
                 provider.GetRequiredService<ApplicationDbContext>());
         });
+    }
 
-        // Configure test environment
-        builder.UseEnvironment("Testing");
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing)
+        {
+            _connection?.Close();
+            _connection?.Dispose();
+        }
+        base.Dispose(disposing);
     }
 
     /// <summary>
@@ -56,16 +69,24 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     }
 
     /// <summary>
-    /// Resets the in-memory database.
+    /// Resets the in-memory SQLite database.
     /// </summary>
     public async Task ResetDatabaseAsync()
     {
         using var scope = Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        // Delete and recreate the database
-        await context.Database.EnsureDeletedAsync();
+        // For in-memory SQLite, we use EnsureCreated instead of Migrate
+        // EnsureCreated creates the schema directly from the model
         await context.Database.EnsureCreatedAsync();
+
+        // Clear all data
+        context.RemoveRange(context.UserApplications);
+        context.RemoveRange(context.ApplicationRoles);
+        context.RemoveRange(context.Applications);
+        context.RemoveRange(context.Roles);
+        context.RemoveRange(context.Users);
+        await context.SaveChangesAsync();
 
         // Re-seed the database
         var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();

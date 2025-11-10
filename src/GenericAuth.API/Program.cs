@@ -29,7 +29,7 @@ builder.Services.AddApiVersioning(options =>
 builder.Services.AddApplication();
 
 // Add Infrastructure layer services (DbContext, Repositories, Identity)
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure(builder.Configuration, builder.Environment);
 
 // Configure JWT Authentication
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
