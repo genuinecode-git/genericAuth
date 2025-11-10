@@ -8,7 +8,12 @@ public sealed class Email : ValueObject
 {
     private const string EmailPattern = @"^[^@\s]+@[^@\s]+\.[^@\s]+$";
 
-    public string Value { get; private set; }
+    public string Value { get; private set; } = string.Empty;
+
+    // Required for EF Core
+    private Email()
+    {
+    }
 
     private Email(string value)
     {

@@ -39,9 +39,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 options.UseSqlite(_connection);
                 options.EnableSensitiveDataLogging();
                 options.EnableDetailedErrors();
-                // Suppress pending model changes warning for tests
-                options.ConfigureWarnings(warnings =>
-                    warnings.Ignore(Microsoft.EntityFrameworkCore.Diagnostics.RelationalEventId.PendingModelChangesWarning));
             });
 
             // Register DbContext as IApplicationDbContext

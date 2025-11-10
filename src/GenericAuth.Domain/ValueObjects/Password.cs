@@ -5,7 +5,12 @@ namespace GenericAuth.Domain.ValueObjects;
 
 public sealed class Password : ValueObject
 {
-    public string Hash { get; private set; }
+    public string Hash { get; private set; } = string.Empty;
+
+    // Required for EF Core
+    private Password()
+    {
+    }
 
     private Password(string hash)
     {
