@@ -14,7 +14,7 @@ on:
           - major
 
 env:
-  DOTNET_VERSION: '9.0.x'
+  DOTNET_VERSION: '8.0.x'
   SOLUTION_PATH: 'GenericAuth.sln'
   DOCKER_IMAGE_NAME: 'genericauth-api'
   REGISTRY: ghcr.io
