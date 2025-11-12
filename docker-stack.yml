@@ -1,0 +1,241 @@
+version: '3.8'
+
+# =================================================================
+# GenericAuth - Docker Swarm Stack Configuration
+# For production deployment with Docker Swarm
+# Deploy with: docker stack deploy -c docker-stack.yml genericauth
+# =================================================================
+
+services:
+  # =================================================================
+  # PostgreSQL Database
+  # =================================================================
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${DB_NAME:-genericauth}
+      POSTGRES_USER: ${DB_USER:-genericauth}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=300"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=1GB"
+    secrets:
+      - db_password
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - genericauth-network
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager  # Database on manager node
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1024M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+  # =================================================================
+  # Redis Cache
+  # =================================================================
+  redis:
+    image: redis:7-alpine
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD}
+    secrets:
+      - redis_password
+    volumes:
+      - redis-data:/data
+    networks:
+      - genericauth-network
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # =================================================================
+  # Seq Centralized Logging
+  # =================================================================
+  seq:
+    image: datalust/seq:latest
+    environment:
+      - ACCEPT_EULA=Y
+    volumes:
+      - seq-data:/data
+    networks:
+      - genericauth-network
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+
+  # =================================================================
+  # GenericAuth API (Horizontally Scalable)
+  # =================================================================
+  api:
+    image: ${DOCKER_REGISTRY:-localhost}/genericauth-api:${VERSION:-latest}
+    environment:
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Production}
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ASPNETCORE_HTTPS_PORTS=8081
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=${DB_NAME:-genericauth};Username=${DB_USER:-genericauth};Password_File=/run/secrets/db_password;Pooling=true;MinPoolSize=5;MaxPoolSize=20
+      - ConnectionStrings__Redis=redis:6379,password_file=/run/secrets/redis_password
+      - JwtSettings__Secret_File=/run/secrets/jwt_secret
+      - JwtSettings__Issuer=${JWT_ISSUER:-GenericAuth}
+      - JwtSettings__Audience=${JWT_AUDIENCE:-GenericAuthClient}
+      - JwtSettings__ExpirationInMinutes=${JWT_EXPIRATION_MINUTES:-60}
+      - Logging__Seq__ServerUrl=http://seq:5341
+      - AllowedHosts=*
+    secrets:
+      - db_password
+      - redis_password
+      - jwt_secret
+    networks:
+      - genericauth-network
+    deploy:
+      mode: replicated
+      replicas: ${INSTANCE_COUNT:-3}  # Configuration-driven scaling
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        monitor: 60s
+        order: start-first  # Start new container before stopping old one
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: pause
+        monitor: 60s
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+      placement:
+        max_replicas_per_node: 2  # Distribute across nodes
+        preferences:
+          - spread: node.id
+      labels:
+        - "traefik.enable=true"
+        - "traefik.http.routers.genericauth.rule=Host(`api.genericauth.com`)"
+        - "traefik.http.services.genericauth.loadbalancer.server.port=8080"
+
+  # =================================================================
+  # NGINX Load Balancer
+  # =================================================================
+  nginx:
+    image: nginx:alpine
+    configs:
+      - source: nginx_config
+        target: /etc/nginx/nginx.conf
+    secrets:
+      - source: ssl_cert
+        target: /etc/nginx/ssl/cert.pem
+      - source: ssl_key
+        target: /etc/nginx/ssl/key.pem
+    ports:
+      - target: 80
+        published: 80
+        protocol: tcp
+        mode: host
+      - target: 443
+        published: 443
+        protocol: tcp
+        mode: host
+    networks:
+      - genericauth-network
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      restart_policy:
+        condition: on-failure
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+# =================================================================
+# Configs (Configuration files)
+# =================================================================
+configs:
+  nginx_config:
+    file: ./nginx/nginx.conf
+
+# =================================================================
+# Secrets (Sensitive data)
+# =================================================================
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  jwt_secret:
+    file: ./secrets/jwt_secret.txt
+  ssl_cert:
+    file: ./secrets/ssl_cert.pem
+  ssl_key:
+    file: ./secrets/ssl_key.pem
+
+# =================================================================
+# Volumes
+# =================================================================
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  seq-data:
+    driver: local
+
+# =================================================================
+# Networks
+# =================================================================
+networks:
+  genericauth-network:
+    driver: overlay
+    attachable: true
+    ipam:
+      config:
+        - subnet: 10.0.10.0/24

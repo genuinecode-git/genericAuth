@@ -1,0 +1,90 @@
+# =================================================================
+# .dockerignore - Exclude files from Docker build context
+# =================================================================
+
+# Build artifacts
+**/bin/
+**/obj/
+**/out/
+**/.vs/
+**/.vscode/
+**/.idea/
+**/.rider/
+
+# Test artifacts
+**/TestResults/
+**/coverage/
+**/coveragereport/
+
+# Database files (SQLite)
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+# Git
+.git/
+.gitignore
+.gitattributes
+**/.DS_Store
+
+# CI/CD
+.github/
+azure-pipelines.yml
+.gitlab-ci.yml
+
+# Documentation (except README)
+**/*.md
+!README.md
+docs/
+**/*.pdf
+
+# Configuration files
+.editorconfig
+.prettierrc
+.eslintrc
+
+# Node modules (if any)
+**/node_modules/
+**/npm-debug.log
+
+# Temporary files
+**/tmp/
+**/temp/
+**/logs/
+**/*.log
+**/*.tmp
+
+# User-specific files
+**/*.user
+**/*.suo
+**/*.userosscache
+**/*.sln.docstates
+
+# Development environment files
+.env.local
+.env.*.local
+**/*.Development.json
+
+# Docker files themselves
+Dockerfile*
+docker-compose*
+.dockerignore
+
+# OS-specific files
+**/Thumbs.db
+**/.DS_Store
+
+# IDEs
+**/.vscode/
+**/.idea/
+**/*.swp
+**/*.swo
+**/*~
+
+# Package files
+**/*.nupkg
+**/*.snupkg
+
+# Backup files
+**/*.bak
+**/*.orig

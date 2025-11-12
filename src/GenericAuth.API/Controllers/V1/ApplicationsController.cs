@@ -1,18 +1,20 @@
+using Asp.Versioning;
 using GenericAuth.Application.Features.Applications.Commands.CreateApplication;
 using GenericAuth.Application.Features.Applications.Queries.GetApplicationByCode;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace GenericAuth.API.Controllers;
+namespace GenericAuth.API.Controllers.V1;
 
 /// <summary>
 /// Controller for managing applications.
 /// Only accessible by Auth Admin users.
 /// </summary>
 [ApiController]
-[Route("api/[controller]")]
-[Authorize(Policy = "AuthAdminOnly")] // TODO: Implement this policy
+[ApiVersion("1.0")]
+[Route("api/v{version:apiVersion}/[controller]")]
+[Authorize(Policy = "AuthAdminOnly")]
 [Produces("application/json")]
 public class ApplicationsController : ControllerBase
 {
@@ -89,12 +91,10 @@ public class ApplicationsController : ControllerBase
     }
 
     // TODO: Add more endpoints:
-    // - GET /api/applications - List all applications
-    // - GET /api/applications/{id} - Get application by ID
-    // - PUT /api/applications/{id} - Update application
-    // - POST /api/applications/{id}/regenerate-api-key - Regenerate API key
-    // - POST /api/applications/{id}/activate - Activate application
-    // - POST /api/applications/{id}/deactivate - Deactivate application
-    // - POST /api/applications/{id}/roles - Create role for application
-    // - GET /api/applications/{id}/roles - Get roles for application
+    // - GET /api/v1/applications - List all applications
+    // - GET /api/v1/applications/{id} - Get application by ID
+    // - PUT /api/v1/applications/{id} - Update application
+    // - POST /api/v1/applications/{id}/regenerate-api-key - Regenerate API key
+    // - POST /api/v1/applications/{id}/activate - Activate application
+    // - POST /api/v1/applications/{id}/deactivate - Deactivate application
 }

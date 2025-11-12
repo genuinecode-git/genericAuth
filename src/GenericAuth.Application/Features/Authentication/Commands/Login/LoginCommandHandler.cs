@@ -30,10 +30,16 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginCom
 
     public async Task<Result<LoginCommandResponse>> Handle(LoginCommand request, CancellationToken cancellationToken)
     {
-        // Find user by email
+        // Find user by email with appropriate includes based on user type
         var user = await _context.Users
             .Include(u => u.UserRoles)
             .ThenInclude(ur => ur.Role)
+            .Include(u => u.UserApplications)
+            .ThenInclude(ua => ua.ApplicationRole)
+            .ThenInclude(ar => ar.Permissions)
+            .ThenInclude(p => p.Permission)
+            .Include(u => u.UserApplications)
+            .ThenInclude(ua => ua.Application)
             .FirstOrDefaultAsync(u => u.Email == Email.Create(request.Email), cancellationToken);
 
         if (user == null)
@@ -53,13 +59,58 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginCom
             return Result<LoginCommandResponse>.Failure("User account is inactive.");
         }
 
-        // Generate JWT token
-        var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
-        var token = _jwtTokenGenerator.GenerateToken(user, roles);
+        string token;
+
+        // Generate JWT token based on user type and application context
+        if (user.UserType == Domain.Enums.UserType.AuthAdmin)
+        {
+            // Auth Admin - generate system-level token with roles
+            var roles = user.UserRoles.Select(ur => ur.Role.Name).ToList();
+            token = _jwtTokenGenerator.GenerateToken(user, roles);
+        }
+        else if (request.ApplicationId.HasValue)
+        {
+            // Regular user with application context - generate application-scoped token
+            var userApplication = user.UserApplications
+                .FirstOrDefault(ua => ua.ApplicationId == request.ApplicationId.Value);
+
+            if (userApplication == null)
+            {
+                return Result<LoginCommandResponse>.Failure("User is not assigned to this application.");
+            }
+
+            if (!userApplication.IsActive)
+            {
+                return Result<LoginCommandResponse>.Failure("User access to this application is inactive.");
+            }
+
+            if (!userApplication.ApplicationRole.IsActive)
+            {
+                return Result<LoginCommandResponse>.Failure("The assigned application role is inactive.");
+            }
+
+            var permissions = userApplication.ApplicationRole.Permissions
+                .Select(p => p.Permission.Name)
+                .ToList();
+
+            token = _jwtTokenGenerator.GenerateApplicationScopedToken(
+                user,
+                userApplication.ApplicationId,
+                userApplication.Application.Code.Value,
+                userApplication.ApplicationRole.Name,
+                permissions);
+        }
+        else
+        {
+            // Regular user without application context - generate basic token with empty roles
+            // This allows the user to authenticate but they'll need to specify an application
+            // for application-specific operations
+            token = _jwtTokenGenerator.GenerateToken(user, new List<string>());
+        }
 
         // Generate and store refresh token
         var refreshTokenString = _jwtTokenGenerator.GenerateRefreshToken();
-        var refreshToken = RefreshToken.Create(refreshTokenString, validityInDays: 7);
+        var refreshToken = Domain.ValueObjects.RefreshToken.Create(refreshTokenString, validityInDays: 7);
         user.AddRefreshToken(refreshToken);
 
         // Record login
@@ -70,7 +121,7 @@ public class LoginCommandHandler : IRequestHandler<LoginCommand, Result<LoginCom
 
         // Return response
         var response = new LoginCommandResponse(
-            Token: token,
+            AccessToken: token,
             RefreshToken: refreshTokenString,
             ExpiresAt: DateTime.UtcNow.AddHours(1), // JWT expiration
             User: new UserDto(

@@ -25,7 +25,7 @@ public class AssignUserToApplicationCommandHandler : IRequestHandler<AssignUserT
 
         if (user == null)
         {
-            return Result<AssignUserToApplicationCommandResponse>.Failure(
+            return Result<AssignUserToApplicationCommandResponse>.NotFound(
                 $"User with ID '{request.UserId}' not found.");
         }
 
@@ -37,7 +37,7 @@ public class AssignUserToApplicationCommandHandler : IRequestHandler<AssignUserT
 
         if (application == null)
         {
-            return Result<AssignUserToApplicationCommandResponse>.Failure(
+            return Result<AssignUserToApplicationCommandResponse>.NotFound(
                 $"Application with code '{request.ApplicationCode}' not found.");
         }
 
@@ -47,20 +47,37 @@ public class AssignUserToApplicationCommandHandler : IRequestHandler<AssignUserT
                 $"Application '{request.ApplicationCode}' is not active.");
         }
 
-        // Get the role by name within this application
-        var role = application.Roles
-            .FirstOrDefault(r => r.Name.Equals(request.RoleName, StringComparison.OrdinalIgnoreCase));
+        // Get the role by name within this application, or use default role if not specified
+        Domain.Entities.ApplicationRole? role;
 
-        if (role == null)
+        if (string.IsNullOrWhiteSpace(request.RoleName))
         {
-            return Result<AssignUserToApplicationCommandResponse>.Failure(
-                $"Role '{request.RoleName}' not found in application '{request.ApplicationCode}'.");
+            // Use the default role
+            role = application.Roles.FirstOrDefault(r => r.IsDefault);
+
+            if (role == null)
+            {
+                return Result<AssignUserToApplicationCommandResponse>.Failure(
+                    $"No default role configured for application '{request.ApplicationCode}'. Please specify a role name.");
+            }
+        }
+        else
+        {
+            // Get the role by name
+            role = application.Roles
+                .FirstOrDefault(r => r.Name.Equals(request.RoleName, StringComparison.OrdinalIgnoreCase));
+
+            if (role == null)
+            {
+                return Result<AssignUserToApplicationCommandResponse>.Failure(
+                    $"Role '{request.RoleName}' not found in application '{request.ApplicationCode}'.");
+            }
         }
 
         if (!role.IsActive)
         {
             return Result<AssignUserToApplicationCommandResponse>.Failure(
-                $"Role '{request.RoleName}' is not active.");
+                $"Role '{role.Name}' is not active.");
         }
 
         // Assign user to application with the specified role

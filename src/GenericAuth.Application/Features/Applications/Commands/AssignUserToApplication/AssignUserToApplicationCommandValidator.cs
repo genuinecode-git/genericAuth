@@ -13,7 +13,7 @@ public class AssignUserToApplicationCommandValidator : AbstractValidator<AssignU
             .NotEmpty().WithMessage("Application code is required.");
 
         RuleFor(x => x.RoleName)
-            .NotEmpty().WithMessage("Role name is required.")
-            .MaximumLength(100).WithMessage("Role name must not exceed 100 characters.");
+            .MaximumLength(100).WithMessage("Role name must not exceed 100 characters.")
+            .When(x => !string.IsNullOrWhiteSpace(x.RoleName));
     }
 }

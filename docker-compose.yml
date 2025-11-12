@@ -1,0 +1,212 @@
+version: '3.8'
+
+# =================================================================
+# GenericAuth - Docker Compose Configuration
+# Multi-instance deployment with load balancing
+# =================================================================
+
+services:
+  # =================================================================
+  # PostgreSQL Database (Shared across all instances)
+  # =================================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: genericauth-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-genericauth}
+      POSTGRES_USER: ${DB_USER:-genericauth}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-Dev@Pass123}
+    command:
+      - "postgres"
+      - "-c"
+      - "max_connections=300"
+      - "-c"
+      - "shared_buffers=256MB"
+      - "-c"
+      - "effective_cache_size=1GB"
+      - "-c"
+      - "maintenance_work_mem=64MB"
+      - "-c"
+      - "checkpoint_completion_target=0.9"
+      - "-c"
+      - "wal_buffers=16MB"
+      - "-c"
+      - "default_statistics_target=100"
+      - "-c"
+      - "random_page_cost=1.1"
+      - "-c"
+      - "effective_io_concurrency=200"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-genericauth}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - genericauth-network
+
+  # =================================================================
+  # Redis (Distributed Caching & Data Protection)
+  # =================================================================
+  redis:
+    image: redis:7-alpine
+    container_name: genericauth-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    networks:
+      - genericauth-network
+
+  # =================================================================
+  # Seq (Centralized Logging)
+  # =================================================================
+  seq:
+    image: datalust/seq:latest
+    container_name: genericauth-seq
+    restart: unless-stopped
+    environment:
+      - ACCEPT_EULA=Y
+      - SEQ_API_CANONICALURI=http://seq:5341
+    ports:
+      - "5341:80"
+      - "5342:5341"
+    volumes:
+      - seq-data:/data
+    networks:
+      - genericauth-network
+
+  # =================================================================
+  # GenericAuth API Instances (Horizontally Scalable)
+  # =================================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        BUILD_CONFIGURATION: ${BUILD_CONFIGURATION:-Release}
+    image: genericauth-api:latest
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # ASP.NET Core Configuration
+      - ASPNETCORE_ENVIRONMENT=${ASPNETCORE_ENVIRONMENT:-Development}
+      - ASPNETCORE_HTTP_PORTS=8080
+      - ASPNETCORE_HTTPS_PORTS=8081
+
+      # Database Configuration
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=${DB_NAME:-genericauth};Username=${DB_USER:-genericauth};Password=${DB_PASSWORD:-Dev@Pass123};Pooling=true;MinPoolSize=5;MaxPoolSize=20;ConnectionLifetime=300
+
+      # Redis Configuration
+      - ConnectionStrings__Redis=redis:6379
+
+      # JWT Configuration
+      - JwtSettings__Secret=${JWT_SECRET:-YourSuperSecretKeyForProductionMustBeAtLeast32CharactersLong!}
+      - JwtSettings__Issuer=${JWT_ISSUER:-GenericAuth}
+      - JwtSettings__Audience=${JWT_AUDIENCE:-GenericAuthClient}
+      - JwtSettings__ExpirationInMinutes=${JWT_EXPIRATION_MINUTES:-60}
+
+      # Logging Configuration
+      - Logging__LogLevel__Default=Information
+      - Logging__LogLevel__Microsoft.AspNetCore=Warning
+      - Logging__Seq__ServerUrl=http://seq:5341
+
+      # Application Configuration
+      - AllowedHosts=*
+
+      # Instance Information (for logging and monitoring)
+      - INSTANCE_ID={{.Service.Name}}-{{.Task.Slot}}
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - genericauth-network
+    deploy:
+      mode: replicated
+      replicas: ${INSTANCE_COUNT:-3}
+      update_config:
+        parallelism: 1
+        delay: 10s
+        failure_action: rollback
+        order: start-first
+      rollback_config:
+        parallelism: 1
+        delay: 10s
+      restart_policy:
+        condition: on-failure
+        delay: 5s
+        max_attempts: 3
+        window: 120s
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # =================================================================
+  # NGINX Load Balancer
+  # =================================================================
+  nginx:
+    image: nginx:alpine
+    container_name: genericauth-nginx
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl:/etc/nginx/ssl:ro
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - genericauth-network
+
+# =================================================================
+# Volumes (Persistent Data)
+# =================================================================
+volumes:
+  postgres-data:
+    driver: local
+    name: genericauth-postgres-data
+  redis-data:
+    driver: local
+    name: genericauth-redis-data
+  seq-data:
+    driver: local
+    name: genericauth-seq-data
+
+# =================================================================
+# Networks
+# =================================================================
+networks:
+  genericauth-network:
+    driver: bridge
+    name: genericauth-network

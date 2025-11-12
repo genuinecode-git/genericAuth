@@ -12,4 +12,7 @@ public record RegisterCommand(
 public record RegisterCommandResponse(
     Guid UserId,
     string Email,
+    string FirstName,
+    string LastName,
+    string UserType,
     string Message);

@@ -3,10 +3,13 @@ using MediatR;
 
 namespace GenericAuth.Application.Features.Authentication.Commands.Login;
 
-public record LoginCommand(string Email, string Password) : IRequest<Result<LoginCommandResponse>>;
+public record LoginCommand(
+    string Email,
+    string Password,
+    Guid? ApplicationId = null) : IRequest<Result<LoginCommandResponse>>;
 
 public record LoginCommandResponse(
-    string Token,
+    string AccessToken,
     string RefreshToken,
     DateTime ExpiresAt,
     UserDto User);
