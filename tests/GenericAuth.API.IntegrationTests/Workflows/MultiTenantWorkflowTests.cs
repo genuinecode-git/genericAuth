@@ -164,15 +164,9 @@ public class MultiTenantWorkflowTests : IntegrationTestBase
         var forgotPasswordResponse = await PostAsync("/api/v1/auth/forgot-password", forgotPasswordRequest);
         forgotPasswordResponse.StatusCode.Should().Be(HttpStatusCode.OK);
 
-        // Step 4: Get reset token from database
-        var resetToken = await WithDbContextAsync(async context =>
-        {
-            var user = await context.Users.FindAsync(userId);
-            user.Should().NotBeNull();
-            user!.PasswordResetToken.Should().NotBeNullOrEmpty();
-            // Token should be valid (existence check is sufficient)
-            return user.PasswordResetToken!;
-        });
+        // Step 4: Get plain-text reset token from token store
+        var resetToken = _passwordResetTokenStore.GetToken(email);
+        resetToken.Should().NotBeNullOrEmpty("Token should be stored after forgot password request");
 
         // Step 5: Reset password with token
         var resetPasswordRequest = new ResetPasswordRequest(email, resetToken, newPassword);
@@ -361,7 +355,8 @@ public class MultiTenantWorkflowTests : IntegrationTestBase
         var unauthorizedRolesResponse = await _client.GetAsync($"/api/v1/applications/{app.Id}/roles");
         unauthorizedRolesResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
-        var unauthorizedUsersResponse = await _client.GetAsync("/api/v1/user-applications");
+        // Regular user should not be able to access user-application management endpoints
+        var unauthorizedUsersResponse = await _client.GetAsync($"/api/v1/user-applications/applications/{app.Code}/users");
         unauthorizedUsersResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
 
         // Step 5: Verify Auth Admin token has different claims

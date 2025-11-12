@@ -28,7 +28,7 @@ public class GetAllUsersQueryHandler : IRequestHandler<GetAllUsersQuery, Result<
             query = query.Where(u =>
                 u.FirstName.ToLower().Contains(searchTerm) ||
                 u.LastName.ToLower().Contains(searchTerm) ||
-                u.Email.Value.ToLower().Contains(searchTerm));
+                EF.Functions.Like(u.Email.ToString().ToLower(), $"%{searchTerm}%"));
         }
 
         // Apply user type filter

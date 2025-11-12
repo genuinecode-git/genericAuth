@@ -5,6 +5,7 @@ using GenericAuth.API.Controllers.V1;
 using GenericAuth.API.IntegrationTests.Helpers;
 using GenericAuth.Application.Features.Applications.Commands.CreateApplication;
 using GenericAuth.Domain.Entities;
+using GenericAuth.Domain.Services;
 using GenericAuth.Infrastructure.Persistence;
 using MediatR;
 using Microsoft.Extensions.DependencyInjection;
@@ -20,6 +21,7 @@ public class IntegrationTestBase : IClassFixture<CustomWebApplicationFactory>, I
     protected readonly CustomWebApplicationFactory _factory;
     protected readonly HttpClient _client;
     protected readonly JsonSerializerOptions _jsonOptions;
+    protected readonly IPasswordResetTokenStore _passwordResetTokenStore;
 
     // Default test credentials
     protected const string DefaultAuthAdminEmail = "admin@genericauth.com";
@@ -34,6 +36,9 @@ public class IntegrationTestBase : IClassFixture<CustomWebApplicationFactory>, I
         {
             PropertyNameCaseInsensitive = true
         };
+
+        // Get the password reset token store for testing
+        _passwordResetTokenStore = factory.Services.GetRequiredService<IPasswordResetTokenStore>();
     }
 
     public virtual async Task InitializeAsync()
@@ -94,15 +99,19 @@ public class IntegrationTestBase : IClassFixture<CustomWebApplicationFactory>, I
     /// </summary>
     protected async Task<ApplicationResponse> CreateApplicationAsync(
         string? code = null,
-        string? name = null)
+        string? name = null,
+        List<CreateApplicationRoleDto>? initialRoles = null)
     {
         var appCode = code ?? TestDataGenerator.GenerateApplicationCode();
         var appName = name ?? TestDataGenerator.GenerateApplicationName();
 
+        // If no roles provided, use empty list - tests should explicitly provide roles
+        var roles = initialRoles ?? new List<CreateApplicationRoleDto>();
+
         using var scope = _factory.CreateScope();
         var mediator = scope.ServiceProvider.GetRequiredService<IMediator>();
 
-        var command = new CreateApplicationCommand(appName, appCode, new List<CreateApplicationRoleDto>());
+        var command = new CreateApplicationCommand(appName, appCode, roles);
         var result = await mediator.Send(command);
 
         if (!result.IsSuccess)
@@ -133,13 +142,17 @@ public class IntegrationTestBase : IClassFixture<CustomWebApplicationFactory>, I
     /// </summary>
     protected async Task<Guid> CreateApplicationRoleAsync(
         Guid applicationId,
-        string name,
+        string? name = null,
         bool isDefault = false)
     {
         using var scope = _factory.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
-        var role = ApplicationRole.Create(applicationId, name, $"Description for {name}");
+        // Generate unique role name with timestamp suffix to prevent duplicates
+        // If name is provided explicitly, use it as-is (test may intentionally want duplicates)
+        var roleName = name ?? $"Role_{Guid.NewGuid().ToString().Substring(0, 8)}";
+
+        var role = ApplicationRole.Create(applicationId, roleName, $"Description for {roleName}");
         if (isDefault)
         {
             role.SetAsDefault();

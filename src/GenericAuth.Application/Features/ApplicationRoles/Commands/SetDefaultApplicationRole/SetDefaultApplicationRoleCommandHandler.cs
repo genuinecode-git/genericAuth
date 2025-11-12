@@ -37,10 +37,11 @@ public class SetDefaultApplicationRoleCommandHandler : IRequestHandler<SetDefaul
             // Get the role from the application
             var role = application.GetRole(request.RoleId);
 
+            // Auto-activate the role if it's inactive
+            // Setting a role as default implies it should be active
             if (!role.IsActive)
             {
-                return Result<string>.Failure(
-                    "Cannot set an inactive role as default. Please activate the role first.");
+                role.Activate(null); // TODO: Get from current user context
             }
 
             // Remove default status from current default role

@@ -1,7 +1,9 @@
 using GenericAuth.Domain.Entities;
 using GenericAuth.Domain.Enums;
 using GenericAuth.Domain.Services;
+using GenericAuth.Domain.ValueObjects;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 
 namespace GenericAuth.Infrastructure.Persistence;
@@ -14,15 +16,18 @@ public class DatabaseSeeder
     private readonly ApplicationDbContext _context;
     private readonly IPasswordHasher _passwordHasher;
     private readonly ILogger<DatabaseSeeder> _logger;
+    private readonly IHostEnvironment _environment;
 
     public DatabaseSeeder(
         ApplicationDbContext context,
         IPasswordHasher passwordHasher,
-        ILogger<DatabaseSeeder> logger)
+        ILogger<DatabaseSeeder> logger,
+        IHostEnvironment environment)
     {
         _context = context;
         _passwordHasher = passwordHasher;
         _logger = logger;
+        _environment = environment;
     }
 
     /// <summary>
@@ -35,7 +40,13 @@ public class DatabaseSeeder
             // Ensure database is created (for production, migrations should be applied separately)
             // For in-memory test databases, the schema is created by EnsureCreated in the test factory
             // For production, migrations should be run before seeding
-            if (_context.Database.ProviderName != "Microsoft.EntityFrameworkCore.InMemory")
+            var providerName = _context.Database.ProviderName;
+            var isInMemoryProvider = providerName == "Microsoft.EntityFrameworkCore.InMemory";
+            var isTestEnvironment = _environment.EnvironmentName == "Testing";
+
+            // Only migrate if we're not in a test environment and not using in-memory provider
+            // In test environments, EnsureCreated is used by the test factory to create the schema
+            if (!isInMemoryProvider && !isTestEnvironment)
             {
                 await _context.Database.MigrateAsync();
             }
@@ -61,10 +72,12 @@ public class DatabaseSeeder
         const string defaultPassword = "Admin@123";
 
         // Check if Auth Admin already exists
-        var existingAdmin = await _context.Users
-            .FirstOrDefaultAsync(u => u.Email.Value == adminEmail && u.UserType == UserType.AuthAdmin);
+        // Use AnyAsync which is more efficient and safer for existence checks
+        var emailValueObject = Email.Create(adminEmail);
+        var adminExists = await _context.Users
+            .AnyAsync(u => u.Email == emailValueObject && u.UserType == UserType.AuthAdmin);
 
-        if (existingAdmin != null)
+        if (adminExists)
         {
             _logger.LogInformation("Auth Admin user already exists");
             return;

@@ -1,4 +1,5 @@
 using GenericAuth.Application.Common.Interfaces;
+using GenericAuth.Domain.Services;
 using GenericAuth.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -44,6 +45,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             // Register DbContext as IApplicationDbContext
             services.AddScoped<IApplicationDbContext>(provider =>
                 provider.GetRequiredService<ApplicationDbContext>());
+
+            // Replace the production NullPasswordResetTokenStore with InMemoryPasswordResetTokenStore for testing
+            services.RemoveAll<IPasswordResetTokenStore>();
+            services.AddSingleton<IPasswordResetTokenStore, InMemoryPasswordResetTokenStore>();
         });
     }
 
@@ -73,17 +78,12 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         using var scope = Services.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
+        // Ensure the database is deleted first to avoid schema conflicts
+        await context.Database.EnsureDeletedAsync();
+
         // For in-memory SQLite, we use EnsureCreated instead of Migrate
         // EnsureCreated creates the schema directly from the model
         await context.Database.EnsureCreatedAsync();
-
-        // Clear all data
-        context.RemoveRange(context.UserApplications);
-        context.RemoveRange(context.ApplicationRoles);
-        context.RemoveRange(context.Applications);
-        context.RemoveRange(context.Roles);
-        context.RemoveRange(context.Users);
-        await context.SaveChangesAsync();
 
         // Re-seed the database
         var seeder = scope.ServiceProvider.GetRequiredService<DatabaseSeeder>();

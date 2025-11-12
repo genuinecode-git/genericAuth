@@ -24,26 +24,26 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired()
             .HasMaxLength(100);
 
-        // Email value object
-        builder.OwnsOne(u => u.Email, email =>
-        {
-            email.Property(e => e.Value)
-                .HasColumnName("Email")
-                .IsRequired()
-                .HasMaxLength(255);
+        // Email value object - using value conversion for proper querying support
+        builder.Property(u => u.Email)
+            .HasColumnName("Email")
+            .IsRequired()
+            .HasMaxLength(255)
+            .HasConversion(
+                email => email.Value,
+                value => Email.Create(value));
 
-            email.HasIndex(e => e.Value)
-                .IsUnique();
-        });
+        builder.HasIndex(u => u.Email)
+            .IsUnique();
 
-        // Password value object
-        builder.OwnsOne(u => u.Password, password =>
-        {
-            password.Property(p => p.Hash)
-                .HasColumnName("PasswordHash")
-                .IsRequired()
-                .HasMaxLength(500);
-        });
+        // Password value object - using value conversion for proper querying support
+        builder.Property(u => u.Password)
+            .HasColumnName("PasswordHash")
+            .IsRequired()
+            .HasMaxLength(500)
+            .HasConversion(
+                password => password.Hash,
+                hash => Password.Create(hash));
 
         builder.Property(u => u.IsActive)
             .IsRequired()
@@ -83,14 +83,18 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         {
             refreshToken.ToTable("RefreshTokens");
 
-            // Configure the foreign key explicitly
-            refreshToken.WithOwner().HasForeignKey("UserId");
-
-            refreshToken.Property<int>("Id")
+            // 1. Define shadow property for the key
+            // Use Guid instead of int to avoid auto-increment issues with SQLite
+            refreshToken.Property<Guid>("Id")
                 .ValueGeneratedOnAdd();
 
+            // 2. Configure the key
             refreshToken.HasKey("Id");
 
+            // 3. Configure foreign key relationship
+            refreshToken.WithOwner().HasForeignKey("UserId");
+
+            // 4. Configure other properties
             refreshToken.Property(rt => rt.Token)
                 .IsRequired()
                 .HasMaxLength(500);

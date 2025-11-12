@@ -18,17 +18,20 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
     private readonly IPasswordHasher _passwordHasher;
     private readonly IUnitOfWork _unitOfWork;
     private readonly ILogger<ForgotPasswordCommandHandler> _logger;
+    private readonly IPasswordResetTokenStore _tokenStore;
 
     public ForgotPasswordCommandHandler(
         IApplicationDbContext context,
         IPasswordHasher passwordHasher,
         IUnitOfWork unitOfWork,
-        ILogger<ForgotPasswordCommandHandler> logger)
+        ILogger<ForgotPasswordCommandHandler> logger,
+        IPasswordResetTokenStore tokenStore)
     {
         _context = context;
         _passwordHasher = passwordHasher;
         _unitOfWork = unitOfWork;
         _logger = logger;
+        _tokenStore = tokenStore;
     }
 
     public async Task<Result<string>> Handle(
@@ -53,7 +56,10 @@ public class ForgotPasswordCommandHandler : IRequestHandler<ForgotPasswordComman
             // Generate password reset token
             var resetToken = Guid.NewGuid().ToString("N");
 
-            // Hash the token before storing
+            // Store plain-text token (for testing purposes - no-op in production)
+            _tokenStore.StoreToken(request.Email, resetToken);
+
+            // Hash the token before storing in database
             var hashedToken = _passwordHasher.Hash(resetToken);
 
             // Set token with 1 hour expiration

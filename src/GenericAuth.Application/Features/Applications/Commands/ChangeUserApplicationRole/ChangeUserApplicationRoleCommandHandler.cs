@@ -27,7 +27,7 @@ public class ChangeUserApplicationRoleCommandHandler : IRequestHandler<ChangeUse
 
         if (user == null)
         {
-            return Result<ChangeUserApplicationRoleCommandResponse>.Failure(
+            return Result<ChangeUserApplicationRoleCommandResponse>.NotFound(
                 $"User with ID '{request.UserId}' not found.");
         }
 
@@ -39,7 +39,7 @@ public class ChangeUserApplicationRoleCommandHandler : IRequestHandler<ChangeUse
 
         if (application == null)
         {
-            return Result<ChangeUserApplicationRoleCommandResponse>.Failure(
+            return Result<ChangeUserApplicationRoleCommandResponse>.NotFound(
                 $"Application with code '{request.ApplicationCode}' not found.");
         }
 

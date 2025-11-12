@@ -326,13 +326,19 @@ public class RolesControllerTests : IntegrationTestBase
 
     #region Helper Methods
 
-    private async Task<Guid> CreateSystemRoleAsync(string name)
+    private async Task<Guid> CreateSystemRoleAsync(string? name = null)
     {
-        await using var context = GetDbContext();
-        var role = Role.Create(name, $"Description for {name}");
-        await context.Roles.AddAsync(role);
-        await context.SaveChangesAsync();
-        return role.Id;
+        return await WithDbContextAsync(async context =>
+        {
+            // Generate unique role name with timestamp suffix to prevent duplicates
+            // If name is provided explicitly, use it as-is (test may intentionally want duplicates)
+            var roleName = name ?? $"SystemRole_{Guid.NewGuid().ToString().Substring(0, 8)}";
+
+            var role = Role.Create(roleName, $"Description for {roleName}");
+            await context.Roles.AddAsync(role);
+            await context.SaveChangesAsync();
+            return role.Id;
+        });
     }
 
     #endregion

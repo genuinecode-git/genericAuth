@@ -9,7 +9,7 @@ public record LoginCommand(
     Guid? ApplicationId = null) : IRequest<Result<LoginCommandResponse>>;
 
 public record LoginCommandResponse(
-    string Token,
+    string AccessToken,
     string RefreshToken,
     DateTime ExpiresAt,
     UserDto User);

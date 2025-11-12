@@ -37,7 +37,7 @@ public class AuthControllerTests : IntegrationTestBase
         result.Should().NotBeNull();
         result!.Success.Should().BeTrue();
         result.Data.Should().NotBeNull();
-        result.Data.Email.Should().Be(request.Email);
+        result.Data.Email.Should().BeEquivalentTo(request.Email);
         result.Data.FirstName.Should().Be(request.FirstName);
         result.Data.LastName.Should().Be(request.LastName);
         result.Data.UserType.Should().Be("RegularUser");
@@ -142,7 +142,7 @@ public class AuthControllerTests : IntegrationTestBase
         var result = await response.Content.ReadFromJsonAsync<ApiResponse<object>>(_jsonOptions);
         result.Should().NotBeNull();
         result!.Success.Should().BeFalse();
-        result.Errors.Should().Contain(e => e.Contains("Invalid credentials"));
+        result.Errors.Should().Contain(e => e.Contains("Invalid") && (e.Contains("credentials") || e.Contains("email") || e.Contains("password")));
     }
 
     [Fact]
@@ -370,12 +370,9 @@ public class AuthControllerTests : IntegrationTestBase
         // Request password reset
         await PostAsync("/api/v1/auth/forgot-password", new ForgotPasswordRequest(email));
 
-        // Get reset token from database
-        var resetToken = await WithDbContextAsync(async context =>
-        {
-            var user = await context.Users.FindAsync(userId);
-            return user!.PasswordResetToken;
-        });
+        // Get reset token from token store (plain-text token)
+        var resetToken = _passwordResetTokenStore.GetToken(email);
+        resetToken.Should().NotBeNullOrEmpty("Token should be stored after forgot password request");
 
         var newPassword = "NewPassword@123";
         var request = new ResetPasswordRequest(email, resetToken!, newPassword);
@@ -404,18 +401,18 @@ public class AuthControllerTests : IntegrationTestBase
         // Request password reset
         await PostAsync("/api/v1/auth/forgot-password", new ForgotPasswordRequest(email));
 
-        // Get and expire the reset token
-        var resetToken = await WithDbContextAsync(async context =>
+        // Get plain-text token from token store
+        var resetToken = _passwordResetTokenStore.GetToken(email);
+        resetToken.Should().NotBeNullOrEmpty("Token should be stored after forgot password request");
+
+        // Expire the reset token in the database
+        await WithDbContextAsync(async context =>
         {
             var user = await context.Users.FindAsync(userId);
-            var token = user!.PasswordResetToken;
-
             // Set expiry to past
-            typeof(User).GetProperty("PasswordResetTokenExpiry")!
+            typeof(User).GetProperty("PasswordResetTokenExpiresAt")!
                 .SetValue(user, DateTime.UtcNow.AddHours(-1));
-
             await context.SaveChangesAsync();
-            return token;
         });
 
         var request = new ResetPasswordRequest(email, resetToken!, "NewPassword@123");

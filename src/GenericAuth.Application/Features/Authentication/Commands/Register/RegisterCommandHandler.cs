@@ -55,6 +55,9 @@ public class RegisterCommandHandler : IRequestHandler<RegisterCommand, Result<Re
         var response = new RegisterCommandResponse(
             user.Id,
             user.Email.Value,
+            user.FirstName,
+            user.LastName,
+            user.UserType.ToString(),
             "User registered successfully. Please confirm your email.");
 
         return Result<RegisterCommandResponse>.Success(response);

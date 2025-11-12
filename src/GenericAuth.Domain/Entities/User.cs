@@ -50,7 +50,7 @@ public class User : BaseEntity
         EmailConfirmationToken = Guid.NewGuid().ToString("N");
     }
 
-    public static User Create(string firstName, string lastName, string email, string passwordHash, UserType userType = UserType.Regular)
+    public static User Create(string firstName, string lastName, string email, string passwordHash, UserType userType = UserType.RegularUser)
     {
         if (string.IsNullOrWhiteSpace(firstName))
             throw new DomainException("First name cannot be empty.");

@@ -3,6 +3,7 @@ using GenericAuth.API.Middleware;
 using GenericAuth.Application;
 using GenericAuth.Infrastructure;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
@@ -138,19 +139,22 @@ builder.Services.AddHealthChecks();
 
 var app = builder.Build();
 
-// Seed the database
-using (var scope = app.Services.CreateScope())
+// Seed the database (skip in test environment)
+if (!app.Environment.IsEnvironment("Testing"))
 {
-    var services = scope.ServiceProvider;
-    try
+    using (var scope = app.Services.CreateScope())
     {
-        var seeder = services.GetRequiredService<GenericAuth.Infrastructure.Persistence.DatabaseSeeder>();
-        await seeder.SeedAsync();
-    }
-    catch (Exception ex)
-    {
-        var logger = services.GetRequiredService<ILogger<Program>>();
-        logger.LogError(ex, "An error occurred while seeding the database");
+        var services = scope.ServiceProvider;
+        try
+        {
+            var seeder = services.GetRequiredService<GenericAuth.Infrastructure.Persistence.DatabaseSeeder>();
+            await seeder.SeedAsync();
+        }
+        catch (Exception ex)
+        {
+            var logger = services.GetRequiredService<ILogger<Program>>();
+            logger.LogError(ex, "An error occurred while seeding the database");
+        }
     }
 }
 
@@ -177,6 +181,52 @@ app.UseApplicationAuthentication();
 
 // Add Authentication & Authorization
 app.UseAuthentication();
+
+// Global exception handler to catch validation exceptions
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        var exceptionFeature = context.Features.Get<IExceptionHandlerFeature>();
+        var exception = exceptionFeature?.Error;
+
+        if (exception is FluentValidation.ValidationException validationException)
+        {
+            context.Response.StatusCode = StatusCodes.Status400BadRequest;
+            context.Response.ContentType = "application/json";
+
+            var errors = validationException.Errors
+                .Select(e => e.ErrorMessage)
+                .ToList();
+
+            var response = new
+            {
+                Success = false,
+                Message = "Validation failed",
+                Errors = errors,
+                Data = (object?)null
+            };
+
+            await context.Response.WriteAsJsonAsync(response);
+            return;
+        }
+
+        // For other exceptions, return 500
+        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+        context.Response.ContentType = "application/json";
+
+        var errorResponse = new
+        {
+            Success = false,
+            Message = "An error occurred while processing your request.",
+            Errors = new[] { exception?.Message ?? "Unknown error" },
+            Data = (object?)null
+        };
+
+        await context.Response.WriteAsJsonAsync(errorResponse);
+    });
+});
+
 app.UseAuthorization();
 
 // Map controllers

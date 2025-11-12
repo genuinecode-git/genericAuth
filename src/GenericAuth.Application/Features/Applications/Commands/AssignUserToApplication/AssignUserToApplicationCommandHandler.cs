@@ -25,7 +25,7 @@ public class AssignUserToApplicationCommandHandler : IRequestHandler<AssignUserT
 
         if (user == null)
         {
-            return Result<AssignUserToApplicationCommandResponse>.Failure(
+            return Result<AssignUserToApplicationCommandResponse>.NotFound(
                 $"User with ID '{request.UserId}' not found.");
         }
 
@@ -37,7 +37,7 @@ public class AssignUserToApplicationCommandHandler : IRequestHandler<AssignUserT
 
         if (application == null)
         {
-            return Result<AssignUserToApplicationCommandResponse>.Failure(
+            return Result<AssignUserToApplicationCommandResponse>.NotFound(
                 $"Application with code '{request.ApplicationCode}' not found.");
         }
 

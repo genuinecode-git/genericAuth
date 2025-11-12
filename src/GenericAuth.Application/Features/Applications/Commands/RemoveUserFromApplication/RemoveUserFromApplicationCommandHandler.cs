@@ -1,5 +1,6 @@
 using GenericAuth.Application.Common.Interfaces;
 using GenericAuth.Application.Common.Models;
+using GenericAuth.Domain.Exceptions;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
@@ -27,7 +28,7 @@ public class RemoveUserFromApplicationCommandHandler : IRequestHandler<RemoveUse
 
         if (user == null)
         {
-            return Result<string>.Failure(
+            return Result<string>.NotFound(
                 $"User with ID '{request.UserId}' not found.");
         }
 
@@ -38,8 +39,16 @@ public class RemoveUserFromApplicationCommandHandler : IRequestHandler<RemoveUse
 
         if (application == null)
         {
-            return Result<string>.Failure(
+            return Result<string>.NotFound(
                 $"Application with code '{request.ApplicationCode}' not found.");
+        }
+
+        // Check if user is assigned to the application before attempting removal
+        var isAssigned = application.UserApplications.Any(ua => ua.UserId == user.Id);
+        if (!isAssigned)
+        {
+            return Result<string>.NotFound(
+                $"User is not assigned to application '{application.Name}'.");
         }
 
         // Remove the user from the application
@@ -53,6 +62,11 @@ public class RemoveUserFromApplicationCommandHandler : IRequestHandler<RemoveUse
 
             return Result<string>.Success(
                 $"User successfully removed from application '{application.Name}'.");
+        }
+        catch (DomainException ex)
+        {
+            // This should not happen due to our check above, but handle it as NotFound
+            return Result<string>.NotFound(ex.Message);
         }
         catch (Exception ex)
         {

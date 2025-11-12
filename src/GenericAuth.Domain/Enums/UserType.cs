@@ -9,7 +9,7 @@ public enum UserType
     /// Regular user with application-scoped access.
     /// Must authenticate with application context and assigned roles.
     /// </summary>
-    Regular = 0,
+    RegularUser = 0,
 
     /// <summary>
     /// System administrator with super admin privileges.

@@ -42,10 +42,17 @@ public class ResetPasswordCommandHandler : IRequestHandler<ResetPasswordCommand,
             return Result<string>.Failure("Invalid email or reset token.");
         }
 
-        // Hash the provided token and validate it
-        var hashedToken = _passwordHasher.Hash(request.ResetToken);
+        // Verify the provided token against the stored hash
+        if (user.PasswordResetToken == null ||
+            !_passwordHasher.Verify(request.ResetToken, user.PasswordResetToken))
+        {
+            return Result<string>.Failure(
+                "Invalid or expired reset token. Please request a new password reset.");
+        }
 
-        if (!user.ValidatePasswordResetToken(hashedToken))
+        // Check expiration separately for clarity
+        if (user.PasswordResetTokenExpiresAt == null ||
+            user.PasswordResetTokenExpiresAt < DateTime.UtcNow)
         {
             return Result<string>.Failure(
                 "Invalid or expired reset token. Please request a new password reset.");

@@ -4,6 +4,7 @@ using GenericAuth.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GenericAuth.Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251111140150_UseValueConvertersForEmailAndPassword")]
+    partial class UseValueConvertersForEmailAndPassword
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -479,9 +482,11 @@ namespace GenericAuth.Infrastructure.Migrations
                 {
                     b.OwnsMany("GenericAuth.Domain.ValueObjects.RefreshToken", "RefreshTokens", b1 =>
                         {
-                            b1.Property<Guid>("Id")
+                            b1.Property<int>("Id")
                                 .ValueGeneratedOnAdd()
-                                .HasColumnType("uniqueidentifier");
+                                .HasColumnType("int");
+
+                            SqlServerPropertyBuilderExtensions.UseIdentityColumn(b1.Property<int>("Id"));
 
                             b1.Property<DateTime>("CreatedAt")
                                 .HasColumnType("datetime2");

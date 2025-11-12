@@ -9,7 +9,7 @@ namespace GenericAuth.Application.Features.Authentication.Commands.RefreshToken;
 public record RefreshTokenCommand(string RefreshToken) : IRequest<Result<RefreshTokenCommandResponse>>;
 
 public record RefreshTokenCommandResponse(
-    string Token,
+    string AccessToken,
     string RefreshToken,
     DateTime ExpiresAt,
     UserDto User);

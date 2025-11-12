@@ -47,6 +47,9 @@ public static class DependencyInjection
         services.AddScoped<IJwtTokenGenerator, JwtTokenGenerator>();
         services.AddScoped<IPasswordHasher, PasswordHasher>();
 
+        // Password Reset Token Store (no-op in production for security)
+        services.AddSingleton<IPasswordResetTokenStore, NullPasswordResetTokenStore>();
+
         // Services
         services.AddTransient<IDateTime, DateTimeService>();
 

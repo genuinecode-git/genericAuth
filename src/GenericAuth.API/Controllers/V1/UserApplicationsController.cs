@@ -1,4 +1,5 @@
 using Asp.Versioning;
+using GenericAuth.Application.Common.Models;
 using GenericAuth.Application.Features.Applications.Commands.AssignUserToApplication;
 using GenericAuth.Application.Features.Applications.Commands.ChangeUserApplicationRole;
 using GenericAuth.Application.Features.Applications.Commands.RemoveUserFromApplication;
@@ -59,13 +60,14 @@ public class UserApplicationsController : ControllerBase
                 "Failed to assign user {UserId} to application {ApplicationCode}: {Errors}",
                 command.UserId, command.ApplicationCode, string.Join(", ", result.Errors));
 
-            // Determine appropriate status code based on error message
-            if (result.Errors.Any(e => e.Contains("not found", StringComparison.OrdinalIgnoreCase)))
+            // Use ResultStatus to determine appropriate HTTP status code
+            return result.Status switch
             {
-                return NotFound(new { errors = result.Errors });
-            }
-
-            return BadRequest(new { errors = result.Errors });
+                ResultStatus.NotFound => NotFound(new { errors = result.Errors }),
+                ResultStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { errors = result.Errors }),
+                ResultStatus.Conflict => Conflict(new { errors = result.Errors }),
+                _ => BadRequest(new { errors = result.Errors })
+            };
         }
 
         _logger.LogInformation(
@@ -189,12 +191,14 @@ public class UserApplicationsController : ControllerBase
         {
             _logger.LogWarning("Failed to change user role: {Errors}", string.Join(", ", result.Errors));
 
-            if (result.Errors.Any(e => e.Contains("not found", StringComparison.OrdinalIgnoreCase)))
+            // Use ResultStatus to determine appropriate HTTP status code
+            return result.Status switch
             {
-                return NotFound(new { errors = result.Errors });
-            }
-
-            return BadRequest(new { errors = result.Errors });
+                ResultStatus.NotFound => NotFound(new { errors = result.Errors }),
+                ResultStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { errors = result.Errors }),
+                ResultStatus.Conflict => Conflict(new { errors = result.Errors }),
+                _ => BadRequest(new { errors = result.Errors })
+            };
         }
 
         _logger.LogInformation("User role changed successfully");
@@ -228,12 +232,14 @@ public class UserApplicationsController : ControllerBase
             _logger.LogWarning("Failed to remove user from application: {Errors}",
                 string.Join(", ", result.Errors));
 
-            if (result.Errors.Any(e => e.Contains("not found", StringComparison.OrdinalIgnoreCase)))
+            // Use ResultStatus to determine appropriate HTTP status code
+            return result.Status switch
             {
-                return NotFound(new { errors = result.Errors });
-            }
-
-            return BadRequest(new { errors = result.Errors });
+                ResultStatus.NotFound => NotFound(new { errors = result.Errors }),
+                ResultStatus.Forbidden => StatusCode(StatusCodes.Status403Forbidden, new { errors = result.Errors }),
+                ResultStatus.Conflict => Conflict(new { errors = result.Errors }),
+                _ => BadRequest(new { errors = result.Errors })
+            };
         }
 
         _logger.LogInformation("User {UserId} removed successfully from application {ApplicationCode}",

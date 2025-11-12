@@ -16,9 +16,7 @@ public class CreateApplicationCommandValidator : AbstractValidator<CreateApplica
             .WithMessage("Application code must be 3-50 characters and contain only letters, numbers, hyphens, or underscores.");
 
         RuleFor(x => x.InitialRoles)
-            .NotNull().WithMessage("Initial roles are required.")
-            .Must(roles => roles != null && roles.Count > 0)
-            .WithMessage("At least one initial role must be provided.");
+            .NotNull().WithMessage("Initial roles are required.");
 
         RuleForEach(x => x.InitialRoles)
             .ChildRules(role =>

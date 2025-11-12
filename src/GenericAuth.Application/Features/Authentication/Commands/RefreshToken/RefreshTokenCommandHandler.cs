@@ -91,7 +91,7 @@ public class RefreshTokenCommandHandler : MediatR.IRequestHandler<RefreshTokenCo
 
             // Return response
             var response = new RefreshTokenCommandResponse(
-                Token: newToken,
+                AccessToken: newToken,
                 RefreshToken: newRefreshTokenString,
                 ExpiresAt: DateTime.UtcNow.AddHours(1), // JWT expiration
                 User: new UserDto(
